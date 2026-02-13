@@ -1,0 +1,35 @@
+server:
+  grpc_port: 50051
+  http_port: 8080
+
+database:
+  host: localhost
+  port: 5432
+  name: silver_guardian
+  user: dev
+  password: devpass123
+  max_connections: 25
+  max_idle_connections: 5
+
+redis:
+  host: localhost
+  port: 6379
+  db: 0
+
+youtube:
+  api_key: ${YOUTUBE_API_KEY}
+
+gemini:
+  api_key: ${GEMINI_API_KEY}
+  model: gemini-2.0-flash
+  temperature: 0.3
+  max_tokens: 2048
+
+worker:
+  pool_size: 10
+  max_retries: 3
+  timeout_seconds: 300
+
+logging:
+  level: info
+  format: json
