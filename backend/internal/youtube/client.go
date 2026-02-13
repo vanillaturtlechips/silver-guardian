@@ -45,21 +45,30 @@ func NewClient(apiKey string) *Client {
 
 // ExtractVideoID extracts YouTube video ID from URL
 func ExtractVideoID(videoURL string) (string, error) {
-    patterns := []string{
-        `(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})`,
-        `(?:youtu\.be\/)([a-zA-Z0-9_-]{11})`,
-        `(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})`,
-    }
+	fmt.Printf("[DEBUG] Parsing Input: %s\n", videoURL)
 
-    for _, pattern := range patterns {
-        re := regexp.MustCompile(pattern)
-        matches := re.FindStringSubmatch(videoURL)
-        if len(matches) > 1 {
-            return matches[1], nil
-        }
-    }
+	// 1. 입력값이 이미 깔끔한 11자리 ID인 경우 (프론트엔드가 처리해준 경우)
+	// 예: "6NNaHMzFnac"
+	if len(videoURL) == 11 {
+		match, _ := regexp.MatchString(`^[a-zA-Z0-9_-]{11}$`, videoURL)
+		if match {
+			fmt.Printf("[DEBUG] Input is already a raw ID: %s\n", videoURL)
+			return videoURL, nil
+		}
+	}
 
-    return "", fmt.Errorf("invalid YouTube URL")
+	// 2. URL 형식이면 정규식으로 추출 (Shorts, Live, Embed, 공유 링크 등 모두 지원)
+	// 예: "https://www.youtube.com/shorts/6NNaHMzFnac"
+	regex := regexp.MustCompile(`(?:v=|be\/|embed\/|shorts\/|live\/)([\w-]{11})`)
+	matches := regex.FindStringSubmatch(videoURL)
+	
+	if len(matches) < 2 {
+		fmt.Printf("[DEBUG] Regex failed to match\n")
+		return "", fmt.Errorf("invalid YouTube URL")
+	}
+
+	fmt.Printf("[DEBUG] Extracted ID from URL: %s\n", matches[1])
+	return matches[1], nil
 }
 
 // GetMetadata retrieves video metadata using YouTube Data API

@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package analysis;
+
+option go_package = "github.com/your-org/silver-guardian/backend/proto";
+
+service AnalysisService {
+  // 분석 시작
+  rpc StartAnalysis(AnalysisRequest) returns (AnalysisResponse);
+  
+  // 실시간 진행 상황 스트리밍
+  rpc StreamProgress(ProgressRequest) returns (stream ProgressEvent);
+  
+  // 결과 조회
+  rpc GetResult(ResultRequest) returns (AnalysisResult);
+  
+  // 작업 취소
+  rpc CancelAnalysis(CancelRequest) returns (CancelResponse);
+}
+
+message AnalysisRequest {
+  string video_url = 1;
+  AnalysisOptions options = 2;
+}
+
+message AnalysisOptions {
+  int32 sensitivity = 1;  // 0=Low, 1=Medium, 2=High
+  bool analyze_comments = 2;
+  int32 top_comments_count = 3;  // 기본 10
+}
+
+message AnalysisResponse {
+  string job_id = 1;
+  string status = 2;
+  string message = 3;
+}
+
+message ProgressRequest {
+  string job_id = 1;
+}
+
+message ProgressEvent {
+  string job_id = 1;
+  string type = 2;  // "log", "progress", "complete", "error"
+  string message = 3;
+  int32 progress = 4;  // 0-100
+  string timestamp = 5;
+}
+
+message ResultRequest {
+  string job_id = 1;
+}
+
+message AnalysisResult {
+  string job_id = 1;
+  string video_id = 2;
+  VideoMetadata metadata = 3;
+  int32 safety_score = 4;
+  repeated string categories = 5;
+  string gemini_response = 6;
+  repeated Comment top_comments = 7;
+  string status = 8;
+  string created_at = 9;
+  string completed_at = 10;
+}
+
+message VideoMetadata {
+  string title = 1;
+  string description = 2;
+  string channel = 3;
+  int64 duration = 4;
+  int64 view_count = 5;
+  string published_at = 6;
+}
+
+message Comment {
+  string author = 1;
+  string text = 2;
+  int64 likes = 3;
+  int32 rank = 4;
+}
+
+message CancelRequest {
+  string job_id = 1;
+}
+
+message CancelResponse {
+  string job_id = 1;
+  bool cancelled = 2;
+  string message = 3;
+}
