@@ -39,14 +39,8 @@ export async function getAnalysisStatus(
 }
 
 export function extractYouTubeId(url: string): string | null {
-  const patterns = [
-    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
-    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-  ];
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) return match[1];
-  }
-  return null;
+  // 일반 주소, 쇼츠, 공유 링크, 임베드 등 모든 타입 지원
+  const regex = /(?:v=|be\/|embed\/|shorts\/|live\/)([\w-]{11})/;
+  const match = url.match(regex);
+  return match ? match[1] : null;
 }

@@ -166,7 +166,7 @@ func (a *Analyzer) runAnalysis(ctx context.Context, jobID uuid.UUID, videoURL st
 
     // Save result
     a.sendProgress(jobID, "log", "Content analysis complete — Status: Safe ✓", 90)
-    if err := a.store.SaveResult(jobID, result.SafetyScore, result.Categories, result); err != nil {
+    if err := a.store.SaveResult(jobID, result.SafetyScore, result.Concerns, result); err != nil {
         a.handleError(jobID, "Failed to save result", err)
         return
     }
@@ -179,7 +179,8 @@ func (a *Analyzer) runAnalysis(ctx context.Context, jobID uuid.UUID, videoURL st
     }
     time.Sleep(1 * time.Second)
 
-    a.sendProgress(jobID, "complete", "Analysis completed successfully", 100)
+    finalMessage := fmt.Sprintf("%s\n\nConcerns: %v", result.Reasoning, result.Concerns)
+    a.sendProgress(jobID, "complete", finalMessage, 100)
 }
 
 func (a *Analyzer) sendProgress(jobID uuid.UUID, eventType, message string, progress int) {
