@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import { grpcClient } from "@/lib/grpc-client";
 
 export interface LogEntry {
   id: string;
@@ -15,18 +16,6 @@ export interface MonitoringState {
   videoId: string | null;
 }
 
-const MOCK_SEQUENCE: { delay: number; type: LogEntry["type"]; message: string }[] = [
-  { delay: 500, type: "info", message: "Initializing monitoring session…" },
-  { delay: 1200, type: "info", message: "Connecting to video stream…" },
-  { delay: 800, type: "success", message: "Stream connection established" },
-  { delay: 1500, type: "info", message: "Extracting video frames for analysis…" },
-  { delay: 2000, type: "info", message: "Captions extracted successfully" },
-  { delay: 1000, type: "info", message: "Sending frames to Gemini AI engine…" },
-  { delay: 2500, type: "info", message: "Analyzing content with Gemini Vision…" },
-  { delay: 1800, type: "success", message: "Content analysis complete — Status: Safe ✓" },
-  { delay: 1000, type: "info", message: "Monitoring active — next scan in 30s" },
-];
-
 export function useMonitoring() {
   const [state, setState] = useState<MonitoringState>({
     isScanning: false,
@@ -36,7 +25,7 @@ export function useMonitoring() {
     videoId: null,
   });
 
-  const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const streamRef = useRef<any>(null);
 
   const addLog = useCallback((type: LogEntry["type"], message: string) => {
     setState((prev) => ({
@@ -49,44 +38,80 @@ export function useMonitoring() {
   }, []);
 
   const startMonitoring = useCallback(
-    (videoId: string) => {
-      // Clear previous timeouts
-      timeoutsRef.current.forEach(clearTimeout);
-      timeoutsRef.current = [];
+    async (videoUrl: string) => {
+      // Cancel previous stream if exists
+      if (streamRef.current) {
+        streamRef.current.cancel();
+      }
 
       setState((prev) => ({
         ...prev,
         isScanning: true,
         engineStatus: "scanning",
-        videoId,
         logs: [],
         safetyScore: 0,
       }));
 
-      let cumulativeDelay = 0;
-      MOCK_SEQUENCE.forEach((entry, i) => {
-        cumulativeDelay += entry.delay;
-        const t = setTimeout(() => {
-          addLog(entry.type, entry.message);
-          // Update safety score progressively
-          const progress = ((i + 1) / MOCK_SEQUENCE.length) * 94;
-          setState((prev) => ({
-            ...prev,
-            safetyScore: Math.round(progress),
-            ...(i === MOCK_SEQUENCE.length - 1
-              ? { isScanning: false, engineStatus: "active" as const }
-              : {}),
-          }));
-        }, cumulativeDelay);
-        timeoutsRef.current.push(t);
-      });
+      try {
+        // Start analysis
+        const response = await grpcClient.startAnalysis(videoUrl);
+
+        const jobId = (response as any).jobId;
+
+        // Stream progress
+        streamRef.current = grpcClient.streamProgress(
+          jobId,
+          (event) => {
+            // Add log
+            const logType = event.type === "error" ? "error" : 
+                           event.type === "complete" ? "success" : "info";
+            addLog(logType, event.message);
+
+            // Update progress
+            setState((prev) => ({
+              ...prev,
+              safetyScore: event.progress || prev.safetyScore,
+              isScanning: event.type !== "complete" && event.type !== "error",
+              engineStatus: event.type === "complete" ? "active" : 
+                           event.type === "error" ? "error" : "scanning",
+            }));
+          },
+          () => {
+            // Stream ended
+            setState((prev) => ({
+              ...prev,
+              isScanning: false,
+              engineStatus: "active",
+            }));
+          },
+          (error) => {
+            console.error("Stream error:", error);
+            addLog("error", `Connection error: ${error.message}`);
+            setState((prev) => ({
+              ...prev,
+              isScanning: false,
+              engineStatus: "error",
+            }));
+          }
+        );
+      } catch (error: any) {
+        console.error("Failed to start analysis:", error);
+        addLog("error", `Failed to start: ${error.message}`);
+        setState((prev) => ({
+          ...prev,
+          isScanning: false,
+          engineStatus: "error",
+        }));
+      }
     },
     [addLog]
   );
 
   const stopMonitoring = useCallback(() => {
-    timeoutsRef.current.forEach(clearTimeout);
-    timeoutsRef.current = [];
+    if (streamRef.current) {
+      streamRef.current.cancel();
+      streamRef.current = null;
+    }
     setState((prev) => ({
       ...prev,
       isScanning: false,
