@@ -1,52 +1,24 @@
-# Build stage
-FROM golang:1.21-alpine AS builder
-
-# Install build dependencies
-RUN apk add --no-cache git make protobuf-dev
-
+# 빌드 단계
+FROM golang:1.24-alpine AS builder
 WORKDIR /app
 
-# Copy go mod files
+# 의존성 설치 (캐시 활용을 위해 먼저 복사)
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code
+# 소스 코드 복사 및 빌드
 COPY . .
+RUN go build -o main ./cmd/server/main.go
 
-# Build
-RUN go build -o /app/bin/server cmd/server/main.go
-
-# Runtime stage
+# 실행 단계
 FROM alpine:latest
-
-# Install runtime dependencies
-RUN apk add --no-cache ca-certificates python3 py3-pip ffmpeg && \
-    pip3 install --no-cache-dir yt-dlp
-
 WORKDIR /app
 
-# Copy binary
-COPY --from=builder /app/bin/server /app/server
+# 빌드된 바이너리와 설정 파일 복사
+COPY --from=builder /app/main .
+COPY --from=builder /app/config.yaml .
+# 만약 마이그레이션 파일이 실행 시 필요하다면 추가
+COPY --from=builder /app/migrations ./migrations 
 
-# Copy config
-COPY config.yaml /app/config.yaml
-
-# Expose gRPC port
-EXPOSE 50051
-
-# Run
-CMD ["/app/server"]
-```
-
----
-
-## 1️⃣7️⃣ .dockerignore
-```
-.git
-.env
-bin/
-*.log
-.vscode/
-.idea/
-*.test
-coverage.*
+EXPOSE 8080
+CMD ["./main"]
