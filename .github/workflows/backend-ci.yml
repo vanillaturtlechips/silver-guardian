@@ -1,0 +1,61 @@
+name: Backend CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - hansik
+    paths:
+      - 'backend/**'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout app code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          # Go 1.24 환경이 반영된 Dockerfile을 사용합니다.
+          push: true
+          tags: |
+            ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/silver-guardian-backend:${{ github.sha }}
+            ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/silver-guardian-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ArgoCD 리포지토리 체크아웃 및 태그 업데이트
+      - name: Checkout ArgoCD Repo
+        uses: actions/checkout@v4
+        with:
+          repository: vanillaturtlechips/silver-guardian-argocd
+          token: ${{ secrets.GH_PAT }}
+          path: argocd-repo
+
+      - name: Update Backend Image Tag in ArgoCD Repo
+        run: |
+          # apps/backend/deployment.yaml 파일의 이미지 태그를 현재 커밋 SHA로 변경합니다.
+          sed -i "s|image:.*|image: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/silver-guardian-backend:${{ github.sha }}|g" argocd-repo/apps/backend/deployment.yaml
+
+      - name: Commit and Push to ArgoCD Repo
+        run: |
+          cd argocd-repo
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/backend/deployment.yaml
+          git commit -m "chore: update backend image tag to ${{ github.sha }} [skip ci]"
+          git push origin main
