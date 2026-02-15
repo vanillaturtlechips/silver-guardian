@@ -15,7 +15,6 @@ jobs:
       - name: Checkout app code
         uses: actions/checkout@v4
 
-      # 1. 멀티 아키텍처 빌드를 위한 QEMU 및 Buildx 설정
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         
@@ -33,7 +32,6 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 2. 멀티 아키텍처(AMD64, ARM64) 빌드 및 푸시
       - name: Build and push Backend image
         uses: docker/build-push-action@v5
         with:
@@ -46,7 +44,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # 3. ArgoCD 리포지토리 체크아웃 및 태그 업데이트
       - name: Checkout ArgoCD Repo
         uses: actions/checkout@v4
         with:
@@ -56,8 +53,7 @@ jobs:
 
       - name: Update Backend Image Tag in ArgoCD Repo
         run: |
-          # deployment.yaml 파일의 이미지 태그를 현재 커밋 SHA로 변경
-          sed -i "s|image:.*|image: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/silver-guardian-backend:${{ github.sha }}|g" argocd-repo/apps/backend/deployment.yaml
+          sed -i "s|image: .*silver-guardian-backend:.*|image: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/silver-guardian-backend:${{ github.sha }}|g" argocd-repo/apps/backend/deployment.yaml
 
       - name: Commit and Push to ArgoCD Repo
         run: |
