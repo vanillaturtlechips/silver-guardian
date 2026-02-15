@@ -6,7 +6,7 @@ on:
       - main
       - hansik
     paths:
-      - 'frontend/**' # 프론트엔드 코드만 적용
+      - 'frontend/**'
 
 jobs:
   build-and-push:
@@ -35,7 +35,7 @@ jobs:
       - name: Build and push multi-arch image
         uses: docker/build-push-action@v5
         with:
-          context: ./frontend # 이미지 기반 리포지토리의 프론트 폴더
+          context: ./frontend
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
@@ -44,18 +44,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # 다른 리포지토리(argocd)를 체크아웃하여 태그 수정
       - name: Checkout ArgoCD Repo
         uses: actions/checkout@v4
         with:
-          repository: vanillaturtlechips/silver-guardian-argocd # 대상 리포지토리
-          token: ${{ secrets.GH_PAT }} # 생성한 PAT 사용
-          path: argocd-repo # 로컬에 내려받을 폴더명
+          repository: vanillaturtlechips/silver-guardian-argocd
+          token: ${{ secrets.GH_PAT }}
+          path: argocd-repo
 
       - name: Update Deployment YAML in ArgoCD Repo
         run: |
-          # argocd-repo 폴더 안의 파일 수정
-          sed -i "s|image:.*|image: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/silver-guardian-mvp:${{ github.sha }}|g" argocd-repo/apps/frontend/deployment.yaml
+          sed -i "s|image: .*silver-guardian-mvp:.*|image: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/silver-guardian-mvp:${{ github.sha }}|g" argocd-repo/apps/frontend/deployment.yaml
 
       - name: Commit and Push to ArgoCD Repo
         run: |
@@ -64,4 +62,4 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add apps/frontend/deployment.yaml
           git commit -m "chore: update frontend image tag to ${{ github.sha }} [skip ci]"
-          git push origin main # argocd 리포지토리의 메인 브랜치로 푸시
+          git push origin main
