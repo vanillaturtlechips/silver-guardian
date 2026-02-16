@@ -1,7 +1,7 @@
-FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
+FROM --platform=linux/amd64 golang:1.24-alpine AS builder
 
-ARG TARGETOS
-ARG TARGETARCH
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
 
 RUN apk add --no-cache git tzdata
 
@@ -11,9 +11,21 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+
+# 디버깅: 파일 확인
+RUN echo "=== Checking files ===" && \
+    ls -la internal/app/ && \
+    grep -c "gRPC-Web server" internal/app/app.go && \
+    echo "File check passed"
+
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -a -installsuffix cgo -o main ./cmd/server/main.go
 
-FROM alpine:latest
+# 디버깅: 바이너리 확인
+RUN echo "=== Checking binary ===" && \
+    strings main | grep -i "gRPC-Web" && \
+    echo "Binary check passed"
+
+FROM --platform=linux/amd64 alpine:latest
 
 RUN apk add --no-cache \
     ca-certificates \

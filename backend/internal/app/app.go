@@ -132,9 +132,8 @@ func (a *App) startServer() error {
 	// 2. gRPC-Web 래퍼 (브라우저용)
 	wrappedGrpc := grpcweb.WrapServer(a.grpcServer,
 		grpcweb.WithOriginFunc(func(origin string) bool {
-			// 프로덕션에서는 정확한 origin만 허용
 			return origin == "https://silver-guardian.site" || 
-			       origin == "http://localhost:5173" // 개발용
+			       origin == "http://localhost:5173"
 		}),
 		grpcweb.WithAllowedRequestHeaders([]string{
 			"Content-Type",
@@ -143,14 +142,32 @@ func (a *App) startServer() error {
 		}),
 	)
 
-	// 3. HTTP 서버 설정 (gRPC-Web용)
+	// 3. HTTP 서버 설정 (gRPC-Web + CORS)
 	a.httpServer = &http.Server{
 		Addr: fmt.Sprintf(":%d", a.cfg.Server.HTTPPort),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// CORS 헤더 설정
+			origin := r.Header.Get("Origin")
+			if origin == "https://silver-guardian.site" || origin == "http://localhost:5173" {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Grpc-Web, Grpc-Timeout, X-User-Agent")
+				w.Header().Set("Access-Control-Expose-Headers", "Grpc-Status, Grpc-Message, Grpc-Encoding, Grpc-Accept-Encoding")
+				w.Header().Set("Access-Control-Max-Age", "86400")
+			}
+
+			// OPTIONS preflight 요청 처리
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			// gRPC-Web 요청 처리
 			if wrappedGrpc.IsGrpcWebRequest(r) {
 				wrappedGrpc.ServeHTTP(w, r)
 				return
 			}
+			
 			// gRPC-Web 요청이 아니면 404
 			http.NotFound(w, r)
 		}),
