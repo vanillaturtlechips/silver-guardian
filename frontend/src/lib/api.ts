@@ -1,7 +1,7 @@
 // API service for future Go-based sidecar integration
 // Replace BASE_URL with your Go backend endpoint
 
-const DEFAULT_BASE_URL = "http://localhost:8080";
+const DEFAULT_BASE_URL = "https://api.silver-guardian.site";
 
 export interface AnalysisRequest {
   videoUrl: string;

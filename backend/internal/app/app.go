@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -26,8 +29,9 @@ import (
 type App struct {
 	cfg         *config.Config
 	grpcServer  *grpc.Server
+	httpServer  *http.Server
 	pgStore     *storage.PostgresStore
-	redisClient *redis.Client // Redis 클라이언트
+	redisClient *redis.Client
 	env         string
 	configPath  string
 }
@@ -55,7 +59,7 @@ func (a *App) Run() error {
 	if err := a.initInfrastructure(); err != nil {
 		return err
 	}
-	defer a.cleanup() // 종료 시 리소스 정리
+	defer a.cleanup()
 
 	// 3. 외부 서비스 클라이언트 초기화 (YouTube, Gemini)
 	ytClient := youtube.NewClient(a.cfg.YouTube.APIKey)
@@ -68,13 +72,12 @@ func (a *App) Run() error {
 	defer geminiClient.Close()
 
 	// 4. 워커(Analyzer) 초기화
-	// [수정 완료] Redis 클라이언트(a.redisClient)를 추가로 전달합니다.
 	analyzer := worker.NewAnalyzer(ytClient, geminiClient, a.pgStore, a.redisClient)
 
 	// 5. gRPC 서버 설정
 	a.initGRPCServer(analyzer)
 
-	// 6. 서버 시작 및 우아한 종료(Graceful Shutdown) 대기
+	// 6. 서버 시작 및 우아한 종료 대기
 	return a.startServer()
 }
 
@@ -101,8 +104,6 @@ func (a *App) initInfrastructure() error {
 
 	// Redis Ping 테스트
 	if err := a.redisClient.Ping(context.Background()).Err(); err != nil {
-		// Redis가 필수라면 여기서 에러 리턴, 선택사항이라면 로그만 찍고 진행
-		// 여기서는 세션 공유를 위해 필수이므로 에러 리턴
 		return fmt.Errorf("failed to connect to Redis: %w", err)
 	}
 	log.Printf("Redis connected.")
@@ -122,32 +123,79 @@ func (a *App) initGRPCServer(analyzer *worker.Analyzer) {
 }
 
 func (a *App) startServer() error {
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", a.cfg.Server.GRPCPort))
+	// 1. 순수 gRPC 서버 (내부/서버 간 통신용)
+	grpcListener, err := net.Listen("tcp", fmt.Sprintf(":%d", a.cfg.Server.GRPCPort))
 	if err != nil {
-		return fmt.Errorf("failed to listen: %w", err)
+		return fmt.Errorf("failed to listen on gRPC port: %w", err)
 	}
 
-	// 서버 실행 고루틴
+	// 2. gRPC-Web 래퍼 (브라우저용)
+	wrappedGrpc := grpcweb.WrapServer(a.grpcServer,
+		grpcweb.WithOriginFunc(func(origin string) bool {
+			// 프로덕션에서는 정확한 origin만 허용
+			return origin == "https://silver-guardian.site" || 
+			       origin == "http://localhost:5173" // 개발용
+		}),
+		grpcweb.WithAllowedRequestHeaders([]string{
+			"Content-Type",
+			"X-Grpc-Web",
+			"Grpc-Timeout",
+		}),
+	)
+
+	// 3. HTTP 서버 설정 (gRPC-Web용)
+	a.httpServer = &http.Server{
+		Addr: fmt.Sprintf(":%d", a.cfg.Server.HTTPPort),
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if wrappedGrpc.IsGrpcWebRequest(r) {
+				wrappedGrpc.ServeHTTP(w, r)
+				return
+			}
+			// gRPC-Web 요청이 아니면 404
+			http.NotFound(w, r)
+		}),
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+	}
+
+	// 4. 순수 gRPC 서버 시작
 	go func() {
-		log.Printf("gRPC server listening on port %d", a.cfg.Server.GRPCPort)
-		if err := a.grpcServer.Serve(listener); err != nil {
-			log.Fatalf("Failed to serve: %v", err)
+		log.Printf("gRPC server (native) listening on port %d", a.cfg.Server.GRPCPort)
+		if err := a.grpcServer.Serve(grpcListener); err != nil {
+			log.Fatalf("Failed to serve gRPC: %v", err)
 		}
 	}()
 
-	// 종료 시그널 대기
+	// 5. HTTP/gRPC-Web 서버 시작
+	go func() {
+		log.Printf("gRPC-Web server (HTTP) listening on port %d", a.cfg.Server.HTTPPort)
+		if err := a.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to serve gRPC-Web: %v", err)
+		}
+	}()
+
+	// 6. 종료 시그널 대기
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	log.Printf("Shutting down gracefully...")
+
+	// HTTP 서버 종료
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := a.httpServer.Shutdown(ctx); err != nil {
+		log.Printf("HTTP server shutdown error: %v", err)
+	}
+
+	// gRPC 서버 종료
 	a.grpcServer.GracefulStop()
-	log.Printf("Server stopped")
+	log.Printf("Servers stopped")
 
 	return nil
 }
 
-// 리소스 정리 (DB 연결 종료 등)
+// 리소스 정리
 func (a *App) cleanup() {
 	if a.pgStore != nil {
 		a.pgStore.Close()

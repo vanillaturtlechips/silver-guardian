@@ -1,6 +1,6 @@
 import { GrpcWebImpl, AnalysisServiceClientImpl, AnalysisRequest } from '../generated/analysis';
 
-const GRPC_URL = import.meta.env.VITE_GRPC_URL || 'http://localhost:8080';
+const GRPC_URL = import.meta.env.VITE_GRPC_URL || 'https://api.silver-guardian.site';
 
 class GRPCClient {
   private client: AnalysisServiceClientImpl;

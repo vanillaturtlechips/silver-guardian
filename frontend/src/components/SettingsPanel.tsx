@@ -14,7 +14,7 @@ const sensitivityLabels = ["Low", "Medium", "High"];
 
 export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
   const [apiKey, setApiKey] = useState("");
-  const [backendUrl, setBackendUrl] = useState("http://localhost:8080");
+  const [backendUrl, setBackendUrl] = useState("https://api.silver-guardian.site");
   const [sensitivity, setSensitivity] = useState([1]); // 0=Low, 1=Med, 2=High
   const [scanInterval, setScanInterval] = useState([30]);
 
@@ -46,7 +46,7 @@ export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
                 id="backend-url"
                 value={backendUrl}
                 onChange={(e) => setBackendUrl(e.target.value)}
-                placeholder="http://localhost:8080"
+                placeholder="https://api.silver-guardian.site"
               />
             </div>
           </div>
