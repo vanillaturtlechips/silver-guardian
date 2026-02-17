@@ -55,17 +55,6 @@ module "eks" {
       }
     }
 
-    # 4. 명일
-    leemyungil = {
-      principal_arn = "arn:aws:iam::009946608368:user/SGO-LeeMyungil"
-      policy_associations = {
-        admin = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-          access_scope = { type = "cluster" }
-        }
-      }
-    }
-
     # 5. 문 재
     moonjae = {
       principal_arn = "arn:aws:iam::009946608368:user/SGO-Moonjae"

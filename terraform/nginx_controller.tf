@@ -28,20 +28,19 @@ data "kubernetes_service_v1" "nginx_svc" {
   depends_on = [helm_release.nginx_ingress]
 }
 
-# 3. Cloudflare에 도메인 등록 (자동 갱신)
-# 예: *.silver-guardian.site -> 방금 만든 ALB 주소
+# 3. Cloudflare에 도메인 등록
 resource "cloudflare_record" "wildcard" {
   zone_id = var.cloudflare_zone_id
-  name    = "*" # 모든 서브도메인(api, www 등)을 여기로 연결
-  value   = data.kubernetes_service_v1.nginx_svc.status.0.load_balancer.0.ingress.0.hostname
+  name    = "*"
+  content = data.kubernetes_service_v1.nginx_svc.status.0.load_balancer.0.ingress.0.hostname
   type    = "CNAME"
   proxied = true
 }
 
 resource "cloudflare_record" "root" {
   zone_id = var.cloudflare_zone_id
-  name    = "@" # 루트 도메인 (silver-guardian.site)
-  value   = data.kubernetes_service_v1.nginx_svc.status.0.load_balancer.0.ingress.0.hostname
+  name    = "@"
+  content = data.kubernetes_service_v1.nginx_svc.status.0.load_balancer.0.ingress.0.hostname
   type    = "CNAME"
   proxied = true
 }

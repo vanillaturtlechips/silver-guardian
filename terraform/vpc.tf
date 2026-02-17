@@ -24,9 +24,8 @@ module "vpc" {
 
 
   public_subnet_tags = {
-    # "이 서브넷은 '인터넷용(Public) 로드밸런서'를 만드는 곳이다"라고 AWS에 알림
     "kubernetes.io/role/elb" = "1"
-    "kubernetes.io/cluster/silver-guardian" = "shared"
+    "kubernetes.io/cluster/silver-guardian-cluster" = "shared"
   }
 
   private_subnet_tags = {
