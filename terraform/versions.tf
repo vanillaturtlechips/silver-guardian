@@ -1,14 +1,22 @@
 terraform {
   required_version = ">= 1.0"
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = ">= 5.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = ">= 2.0"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "2.12.1" # [중요] 버전을 딱 고정했습니다.
+    }
   }
-}
-
-provider "aws" {
-  region = "ap-northeast-2" # 서울 리전
-  # 쉘 스크립트에서 입력받은 환경변수(AWS_ACCESS_KEY_ID 등)를 자동으로 사용합니다.
 }
