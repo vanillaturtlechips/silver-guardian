@@ -16,13 +16,13 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/your-org/silver-guardian/backend/internal/config"
-	"github.com/your-org/silver-guardian/backend/internal/gemini"
-	grpcHandler "github.com/your-org/silver-guardian/backend/internal/grpc"
-	"github.com/your-org/silver-guardian/backend/internal/storage"
-	"github.com/your-org/silver-guardian/backend/internal/worker"
-	"github.com/your-org/silver-guardian/backend/internal/youtube"
-	pb "github.com/your-org/silver-guardian/backend/proto"
+	"github.com/vanillaturtlechips/silver-guardian/backend/internal/config"
+	"github.com/vanillaturtlechips/silver-guardian/backend/internal/gemini"
+	grpcHandler "github.com/vanillaturtlechips/silver-guardian/backend/internal/grpc"
+	"github.com/vanillaturtlechips/silver-guardian/backend/internal/storage"
+	"github.com/vanillaturtlechips/silver-guardian/backend/internal/worker"
+	"github.com/vanillaturtlechips/silver-guardian/backend/internal/youtube"
+	pb "github.com/vanillaturtlechips/silver-guardian/backend/proto"
 )
 
 // App 구조체는 애플리케이션의 의존성들을 관리합니다.

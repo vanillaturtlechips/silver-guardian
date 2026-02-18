@@ -1,14 +1,16 @@
-module github.com/your-org/silver-guardian/backend
+module github.com/vanillaturtlechips/silver-guardian/backend
 
 go 1.24.0
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/generative-ai-go v0.5.0
 	github.com/google/uuid v1.6.0
 	github.com/improbable-eng/grpc-web v0.15.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
 	github.com/redis/go-redis/v9 v9.17.3
+	github.com/stretchr/testify v1.11.1
 	google.golang.org/api v0.155.0
 	google.golang.org/grpc v1.79.1
 	google.golang.org/protobuf v1.36.11
@@ -21,6 +23,7 @@ require (
 	cloud.google.com/go/longrunning v0.5.4 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -32,6 +35,7 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
 	github.com/klauspost/compress v1.11.7 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect

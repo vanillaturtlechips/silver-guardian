@@ -16,13 +16,12 @@ export const protobufPackage = "analysis";
 export interface AnalysisRequest {
   videoUrl: string;
   options: AnalysisOptions | undefined;
+  userId: string;
 }
 
 export interface AnalysisOptions {
-  /** 0=Low, 1=Medium, 2=High */
   sensitivity: number;
   analyzeComments: boolean;
-  /** 기본 10 */
   topCommentsCount: number;
 }
 
@@ -38,10 +37,8 @@ export interface ProgressRequest {
 
 export interface ProgressEvent {
   jobId: string;
-  /** "log", "progress", "complete", "error" */
   type: string;
   message: string;
-  /** 0-100 */
   progress: number;
   timestamp: string;
 }
@@ -89,8 +86,56 @@ export interface CancelResponse {
   message: string;
 }
 
+export interface LoginRequest {
+  idToken: string;
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  user: User | undefined;
+}
+
+export interface GetProfileRequest {
+  userId: string;
+}
+
+export interface UserProfileResponse {
+  user: User | undefined;
+  subscription: Subscription | undefined;
+}
+
+export interface GetHistoryRequest {
+  userId: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface HistoryResponse {
+  items: HistoryItem[];
+}
+
+export interface User {
+  id: number;
+  email: string;
+  name: string;
+  pictureUrl: string;
+}
+
+export interface Subscription {
+  planType: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface HistoryItem {
+  videoId: string;
+  videoTitle: string;
+  thumbnailUrl: string;
+  analyzedAt: string;
+}
+
 function createBaseAnalysisRequest(): AnalysisRequest {
-  return { videoUrl: "", options: undefined };
+  return { videoUrl: "", options: undefined, userId: "" };
 }
 
 export const AnalysisRequest: MessageFns<AnalysisRequest> = {
@@ -100,6 +145,9 @@ export const AnalysisRequest: MessageFns<AnalysisRequest> = {
     }
     if (message.options !== undefined) {
       AnalysisOptions.encode(message.options, writer.uint32(18).fork()).join();
+    }
+    if (message.userId !== "") {
+      writer.uint32(26).string(message.userId);
     }
     return writer;
   },
@@ -127,6 +175,14 @@ export const AnalysisRequest: MessageFns<AnalysisRequest> = {
           message.options = AnalysisOptions.decode(reader, reader.uint32());
           continue;
         }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.userId = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -144,6 +200,11 @@ export const AnalysisRequest: MessageFns<AnalysisRequest> = {
         ? globalThis.String(object.video_url)
         : "",
       options: isSet(object.options) ? AnalysisOptions.fromJSON(object.options) : undefined,
+      userId: isSet(object.userId)
+        ? globalThis.String(object.userId)
+        : isSet(object.user_id)
+        ? globalThis.String(object.user_id)
+        : "",
     };
   },
 
@@ -154,6 +215,9 @@ export const AnalysisRequest: MessageFns<AnalysisRequest> = {
     }
     if (message.options !== undefined) {
       obj.options = AnalysisOptions.toJSON(message.options);
+    }
+    if (message.userId !== "") {
+      obj.userId = message.userId;
     }
     return obj;
   },
@@ -167,6 +231,7 @@ export const AnalysisRequest: MessageFns<AnalysisRequest> = {
     message.options = (object.options !== undefined && object.options !== null)
       ? AnalysisOptions.fromPartial(object.options)
       : undefined;
+    message.userId = object.userId ?? "";
     return message;
   },
 };
@@ -1286,15 +1351,801 @@ export const CancelResponse: MessageFns<CancelResponse> = {
   },
 };
 
+function createBaseLoginRequest(): LoginRequest {
+  return { idToken: "" };
+}
+
+export const LoginRequest: MessageFns<LoginRequest> = {
+  encode(message: LoginRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.idToken !== "") {
+      writer.uint32(10).string(message.idToken);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): LoginRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseLoginRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.idToken = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): LoginRequest {
+    return {
+      idToken: isSet(object.idToken)
+        ? globalThis.String(object.idToken)
+        : isSet(object.id_token)
+        ? globalThis.String(object.id_token)
+        : "",
+    };
+  },
+
+  toJSON(message: LoginRequest): unknown {
+    const obj: any = {};
+    if (message.idToken !== "") {
+      obj.idToken = message.idToken;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<LoginRequest>, I>>(base?: I): LoginRequest {
+    return LoginRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<LoginRequest>, I>>(object: I): LoginRequest {
+    const message = createBaseLoginRequest();
+    message.idToken = object.idToken ?? "";
+    return message;
+  },
+};
+
+function createBaseLoginResponse(): LoginResponse {
+  return { accessToken: "", user: undefined };
+}
+
+export const LoginResponse: MessageFns<LoginResponse> = {
+  encode(message: LoginResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.accessToken !== "") {
+      writer.uint32(10).string(message.accessToken);
+    }
+    if (message.user !== undefined) {
+      User.encode(message.user, writer.uint32(18).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): LoginResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseLoginResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.accessToken = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.user = User.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): LoginResponse {
+    return {
+      accessToken: isSet(object.accessToken)
+        ? globalThis.String(object.accessToken)
+        : isSet(object.access_token)
+        ? globalThis.String(object.access_token)
+        : "",
+      user: isSet(object.user) ? User.fromJSON(object.user) : undefined,
+    };
+  },
+
+  toJSON(message: LoginResponse): unknown {
+    const obj: any = {};
+    if (message.accessToken !== "") {
+      obj.accessToken = message.accessToken;
+    }
+    if (message.user !== undefined) {
+      obj.user = User.toJSON(message.user);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<LoginResponse>, I>>(base?: I): LoginResponse {
+    return LoginResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<LoginResponse>, I>>(object: I): LoginResponse {
+    const message = createBaseLoginResponse();
+    message.accessToken = object.accessToken ?? "";
+    message.user = (object.user !== undefined && object.user !== null) ? User.fromPartial(object.user) : undefined;
+    return message;
+  },
+};
+
+function createBaseGetProfileRequest(): GetProfileRequest {
+  return { userId: "" };
+}
+
+export const GetProfileRequest: MessageFns<GetProfileRequest> = {
+  encode(message: GetProfileRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.userId !== "") {
+      writer.uint32(10).string(message.userId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetProfileRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetProfileRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.userId = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetProfileRequest {
+    return {
+      userId: isSet(object.userId)
+        ? globalThis.String(object.userId)
+        : isSet(object.user_id)
+        ? globalThis.String(object.user_id)
+        : "",
+    };
+  },
+
+  toJSON(message: GetProfileRequest): unknown {
+    const obj: any = {};
+    if (message.userId !== "") {
+      obj.userId = message.userId;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetProfileRequest>, I>>(base?: I): GetProfileRequest {
+    return GetProfileRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetProfileRequest>, I>>(object: I): GetProfileRequest {
+    const message = createBaseGetProfileRequest();
+    message.userId = object.userId ?? "";
+    return message;
+  },
+};
+
+function createBaseUserProfileResponse(): UserProfileResponse {
+  return { user: undefined, subscription: undefined };
+}
+
+export const UserProfileResponse: MessageFns<UserProfileResponse> = {
+  encode(message: UserProfileResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.user !== undefined) {
+      User.encode(message.user, writer.uint32(10).fork()).join();
+    }
+    if (message.subscription !== undefined) {
+      Subscription.encode(message.subscription, writer.uint32(18).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UserProfileResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUserProfileResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.user = User.decode(reader, reader.uint32());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.subscription = Subscription.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UserProfileResponse {
+    return {
+      user: isSet(object.user) ? User.fromJSON(object.user) : undefined,
+      subscription: isSet(object.subscription) ? Subscription.fromJSON(object.subscription) : undefined,
+    };
+  },
+
+  toJSON(message: UserProfileResponse): unknown {
+    const obj: any = {};
+    if (message.user !== undefined) {
+      obj.user = User.toJSON(message.user);
+    }
+    if (message.subscription !== undefined) {
+      obj.subscription = Subscription.toJSON(message.subscription);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UserProfileResponse>, I>>(base?: I): UserProfileResponse {
+    return UserProfileResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<UserProfileResponse>, I>>(object: I): UserProfileResponse {
+    const message = createBaseUserProfileResponse();
+    message.user = (object.user !== undefined && object.user !== null) ? User.fromPartial(object.user) : undefined;
+    message.subscription = (object.subscription !== undefined && object.subscription !== null)
+      ? Subscription.fromPartial(object.subscription)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseGetHistoryRequest(): GetHistoryRequest {
+  return { userId: "", page: 0, pageSize: 0 };
+}
+
+export const GetHistoryRequest: MessageFns<GetHistoryRequest> = {
+  encode(message: GetHistoryRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.userId !== "") {
+      writer.uint32(10).string(message.userId);
+    }
+    if (message.page !== 0) {
+      writer.uint32(16).int32(message.page);
+    }
+    if (message.pageSize !== 0) {
+      writer.uint32(24).int32(message.pageSize);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetHistoryRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetHistoryRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.userId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.page = reader.int32();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.pageSize = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetHistoryRequest {
+    return {
+      userId: isSet(object.userId)
+        ? globalThis.String(object.userId)
+        : isSet(object.user_id)
+        ? globalThis.String(object.user_id)
+        : "",
+      page: isSet(object.page) ? globalThis.Number(object.page) : 0,
+      pageSize: isSet(object.pageSize)
+        ? globalThis.Number(object.pageSize)
+        : isSet(object.page_size)
+        ? globalThis.Number(object.page_size)
+        : 0,
+    };
+  },
+
+  toJSON(message: GetHistoryRequest): unknown {
+    const obj: any = {};
+    if (message.userId !== "") {
+      obj.userId = message.userId;
+    }
+    if (message.page !== 0) {
+      obj.page = Math.round(message.page);
+    }
+    if (message.pageSize !== 0) {
+      obj.pageSize = Math.round(message.pageSize);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetHistoryRequest>, I>>(base?: I): GetHistoryRequest {
+    return GetHistoryRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<GetHistoryRequest>, I>>(object: I): GetHistoryRequest {
+    const message = createBaseGetHistoryRequest();
+    message.userId = object.userId ?? "";
+    message.page = object.page ?? 0;
+    message.pageSize = object.pageSize ?? 0;
+    return message;
+  },
+};
+
+function createBaseHistoryResponse(): HistoryResponse {
+  return { items: [] };
+}
+
+export const HistoryResponse: MessageFns<HistoryResponse> = {
+  encode(message: HistoryResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.items) {
+      HistoryItem.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): HistoryResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseHistoryResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.items.push(HistoryItem.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): HistoryResponse {
+    return {
+      items: globalThis.Array.isArray(object?.items) ? object.items.map((e: any) => HistoryItem.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: HistoryResponse): unknown {
+    const obj: any = {};
+    if (message.items?.length) {
+      obj.items = message.items.map((e) => HistoryItem.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<HistoryResponse>, I>>(base?: I): HistoryResponse {
+    return HistoryResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<HistoryResponse>, I>>(object: I): HistoryResponse {
+    const message = createBaseHistoryResponse();
+    message.items = object.items?.map((e) => HistoryItem.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseUser(): User {
+  return { id: 0, email: "", name: "", pictureUrl: "" };
+}
+
+export const User: MessageFns<User> = {
+  encode(message: User, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.id !== 0) {
+      writer.uint32(8).int64(message.id);
+    }
+    if (message.email !== "") {
+      writer.uint32(18).string(message.email);
+    }
+    if (message.name !== "") {
+      writer.uint32(26).string(message.name);
+    }
+    if (message.pictureUrl !== "") {
+      writer.uint32(34).string(message.pictureUrl);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): User {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUser();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.id = longToNumber(reader.int64());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.email = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.pictureUrl = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): User {
+    return {
+      id: isSet(object.id) ? globalThis.Number(object.id) : 0,
+      email: isSet(object.email) ? globalThis.String(object.email) : "",
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      pictureUrl: isSet(object.pictureUrl)
+        ? globalThis.String(object.pictureUrl)
+        : isSet(object.picture_url)
+        ? globalThis.String(object.picture_url)
+        : "",
+    };
+  },
+
+  toJSON(message: User): unknown {
+    const obj: any = {};
+    if (message.id !== 0) {
+      obj.id = Math.round(message.id);
+    }
+    if (message.email !== "") {
+      obj.email = message.email;
+    }
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    if (message.pictureUrl !== "") {
+      obj.pictureUrl = message.pictureUrl;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<User>, I>>(base?: I): User {
+    return User.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<User>, I>>(object: I): User {
+    const message = createBaseUser();
+    message.id = object.id ?? 0;
+    message.email = object.email ?? "";
+    message.name = object.name ?? "";
+    message.pictureUrl = object.pictureUrl ?? "";
+    return message;
+  },
+};
+
+function createBaseSubscription(): Subscription {
+  return { planType: "", startDate: "", endDate: "" };
+}
+
+export const Subscription: MessageFns<Subscription> = {
+  encode(message: Subscription, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.planType !== "") {
+      writer.uint32(10).string(message.planType);
+    }
+    if (message.startDate !== "") {
+      writer.uint32(18).string(message.startDate);
+    }
+    if (message.endDate !== "") {
+      writer.uint32(26).string(message.endDate);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): Subscription {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSubscription();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.planType = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.startDate = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.endDate = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): Subscription {
+    return {
+      planType: isSet(object.planType)
+        ? globalThis.String(object.planType)
+        : isSet(object.plan_type)
+        ? globalThis.String(object.plan_type)
+        : "",
+      startDate: isSet(object.startDate)
+        ? globalThis.String(object.startDate)
+        : isSet(object.start_date)
+        ? globalThis.String(object.start_date)
+        : "",
+      endDate: isSet(object.endDate)
+        ? globalThis.String(object.endDate)
+        : isSet(object.end_date)
+        ? globalThis.String(object.end_date)
+        : "",
+    };
+  },
+
+  toJSON(message: Subscription): unknown {
+    const obj: any = {};
+    if (message.planType !== "") {
+      obj.planType = message.planType;
+    }
+    if (message.startDate !== "") {
+      obj.startDate = message.startDate;
+    }
+    if (message.endDate !== "") {
+      obj.endDate = message.endDate;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<Subscription>, I>>(base?: I): Subscription {
+    return Subscription.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<Subscription>, I>>(object: I): Subscription {
+    const message = createBaseSubscription();
+    message.planType = object.planType ?? "";
+    message.startDate = object.startDate ?? "";
+    message.endDate = object.endDate ?? "";
+    return message;
+  },
+};
+
+function createBaseHistoryItem(): HistoryItem {
+  return { videoId: "", videoTitle: "", thumbnailUrl: "", analyzedAt: "" };
+}
+
+export const HistoryItem: MessageFns<HistoryItem> = {
+  encode(message: HistoryItem, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.videoId !== "") {
+      writer.uint32(10).string(message.videoId);
+    }
+    if (message.videoTitle !== "") {
+      writer.uint32(18).string(message.videoTitle);
+    }
+    if (message.thumbnailUrl !== "") {
+      writer.uint32(26).string(message.thumbnailUrl);
+    }
+    if (message.analyzedAt !== "") {
+      writer.uint32(34).string(message.analyzedAt);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): HistoryItem {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseHistoryItem();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.videoId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.videoTitle = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.thumbnailUrl = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.analyzedAt = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): HistoryItem {
+    return {
+      videoId: isSet(object.videoId)
+        ? globalThis.String(object.videoId)
+        : isSet(object.video_id)
+        ? globalThis.String(object.video_id)
+        : "",
+      videoTitle: isSet(object.videoTitle)
+        ? globalThis.String(object.videoTitle)
+        : isSet(object.video_title)
+        ? globalThis.String(object.video_title)
+        : "",
+      thumbnailUrl: isSet(object.thumbnailUrl)
+        ? globalThis.String(object.thumbnailUrl)
+        : isSet(object.thumbnail_url)
+        ? globalThis.String(object.thumbnail_url)
+        : "",
+      analyzedAt: isSet(object.analyzedAt)
+        ? globalThis.String(object.analyzedAt)
+        : isSet(object.analyzed_at)
+        ? globalThis.String(object.analyzed_at)
+        : "",
+    };
+  },
+
+  toJSON(message: HistoryItem): unknown {
+    const obj: any = {};
+    if (message.videoId !== "") {
+      obj.videoId = message.videoId;
+    }
+    if (message.videoTitle !== "") {
+      obj.videoTitle = message.videoTitle;
+    }
+    if (message.thumbnailUrl !== "") {
+      obj.thumbnailUrl = message.thumbnailUrl;
+    }
+    if (message.analyzedAt !== "") {
+      obj.analyzedAt = message.analyzedAt;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<HistoryItem>, I>>(base?: I): HistoryItem {
+    return HistoryItem.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<HistoryItem>, I>>(object: I): HistoryItem {
+    const message = createBaseHistoryItem();
+    message.videoId = object.videoId ?? "";
+    message.videoTitle = object.videoTitle ?? "";
+    message.thumbnailUrl = object.thumbnailUrl ?? "";
+    message.analyzedAt = object.analyzedAt ?? "";
+    return message;
+  },
+};
+
 export interface AnalysisService {
-  /** 분석 시작 */
   StartAnalysis(request: DeepPartial<AnalysisRequest>, metadata?: grpc.Metadata): Promise<AnalysisResponse>;
-  /** 실시간 진행 상황 스트리밍 */
   StreamProgress(request: DeepPartial<ProgressRequest>, metadata?: grpc.Metadata): Observable<ProgressEvent>;
-  /** 결과 조회 */
   GetResult(request: DeepPartial<ResultRequest>, metadata?: grpc.Metadata): Promise<AnalysisResult>;
-  /** 작업 취소 */
   CancelAnalysis(request: DeepPartial<CancelRequest>, metadata?: grpc.Metadata): Promise<CancelResponse>;
+  /** [NEW] Auth & User RPCs */
+  LoginWithGoogle(request: DeepPartial<LoginRequest>, metadata?: grpc.Metadata): Promise<LoginResponse>;
+  GetUserProfile(request: DeepPartial<GetProfileRequest>, metadata?: grpc.Metadata): Promise<UserProfileResponse>;
+  GetUserHistory(request: DeepPartial<GetHistoryRequest>, metadata?: grpc.Metadata): Promise<HistoryResponse>;
 }
 
 export class AnalysisServiceClientImpl implements AnalysisService {
@@ -1306,6 +2157,9 @@ export class AnalysisServiceClientImpl implements AnalysisService {
     this.StreamProgress = this.StreamProgress.bind(this);
     this.GetResult = this.GetResult.bind(this);
     this.CancelAnalysis = this.CancelAnalysis.bind(this);
+    this.LoginWithGoogle = this.LoginWithGoogle.bind(this);
+    this.GetUserProfile = this.GetUserProfile.bind(this);
+    this.GetUserHistory = this.GetUserHistory.bind(this);
   }
 
   StartAnalysis(request: DeepPartial<AnalysisRequest>, metadata?: grpc.Metadata): Promise<AnalysisResponse> {
@@ -1322,6 +2176,18 @@ export class AnalysisServiceClientImpl implements AnalysisService {
 
   CancelAnalysis(request: DeepPartial<CancelRequest>, metadata?: grpc.Metadata): Promise<CancelResponse> {
     return this.rpc.unary(AnalysisServiceCancelAnalysisDesc, CancelRequest.fromPartial(request), metadata);
+  }
+
+  LoginWithGoogle(request: DeepPartial<LoginRequest>, metadata?: grpc.Metadata): Promise<LoginResponse> {
+    return this.rpc.unary(AnalysisServiceLoginWithGoogleDesc, LoginRequest.fromPartial(request), metadata);
+  }
+
+  GetUserProfile(request: DeepPartial<GetProfileRequest>, metadata?: grpc.Metadata): Promise<UserProfileResponse> {
+    return this.rpc.unary(AnalysisServiceGetUserProfileDesc, GetProfileRequest.fromPartial(request), metadata);
+  }
+
+  GetUserHistory(request: DeepPartial<GetHistoryRequest>, metadata?: grpc.Metadata): Promise<HistoryResponse> {
+    return this.rpc.unary(AnalysisServiceGetUserHistoryDesc, GetHistoryRequest.fromPartial(request), metadata);
   }
 }
 
@@ -1409,6 +2275,75 @@ export const AnalysisServiceCancelAnalysisDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = CancelResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const AnalysisServiceLoginWithGoogleDesc: UnaryMethodDefinitionish = {
+  methodName: "LoginWithGoogle",
+  service: AnalysisServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return LoginRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = LoginResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const AnalysisServiceGetUserProfileDesc: UnaryMethodDefinitionish = {
+  methodName: "GetUserProfile",
+  service: AnalysisServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return GetProfileRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = UserProfileResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const AnalysisServiceGetUserHistoryDesc: UnaryMethodDefinitionish = {
+  methodName: "GetUserHistory",
+  service: AnalysisServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return GetHistoryRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = HistoryResponse.decode(data);
       return {
         ...value,
         toObject() {

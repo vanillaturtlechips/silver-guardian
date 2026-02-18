@@ -202,3 +202,94 @@ func (s *PostgresStore) GetComments(videoID string, limit int) ([]Comment, error
 
     return comments, rows.Err()
 }
+
+// --- User Logic ---
+
+func (s *PostgresStorage) UpsertUser(email, name, picture, providerID string) (*User, error) {
+	query := `
+		INSERT INTO users (email, name, picture_url, provider_id)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (email) 
+		DO UPDATE SET 
+			name = EXCLUDED.name, 
+			picture_url = EXCLUDED.picture_url,
+			provider_id = EXCLUDED.provider_id
+		RETURNING id, email, name, picture_url, provider_id, created_at
+	`
+	
+	user := &User{}
+	err := s.db.QueryRow(query, email, name, picture, providerID).Scan(
+		&user.ID, &user.Email, &user.Name, &user.PictureURL, &user.ProviderID, &user.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// 기본 구독 정보가 없으면 생성 (Free)
+	_, err = s.db.Exec(`
+		INSERT INTO subscriptions (user_id, plan_type)
+		VALUES ($1, 'free')
+		ON CONFLICT (user_id) DO NOTHING
+	`, user.ID)
+
+	return user, err
+}
+
+func (s *PostgresStorage) GetUserByID(id int64) (*User, error) {
+	user := &User{}
+	err := s.db.QueryRow("SELECT id, email, name, picture_url FROM users WHERE id = $1", id).Scan(
+		&user.ID, &user.Email, &user.Name, &user.PictureURL,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+// --- Subscription Logic ---
+
+func (s *PostgresStorage) GetSubscription(userID int64) (*Subscription, error) {
+	sub := &Subscription{}
+	err := s.db.QueryRow("SELECT user_id, plan_type, start_date, end_date FROM subscriptions WHERE user_id = $1", userID).Scan(
+		&sub.UserID, &sub.PlanType, &sub.StartDate, &sub.EndDate,
+	)
+	if err == sql.ErrNoRows {
+		// 없으면 Free 리턴
+		return &Subscription{UserID: userID, PlanType: "free"}, nil
+	}
+	return sub, err
+}
+
+// --- History Logic ---
+
+func (s *PostgresStorage) AddHistory(userID int64, videoID, title, thumb string) error {
+	_, err := s.db.Exec(`
+		INSERT INTO analysis_history (user_id, video_id, video_title, thumbnail_url)
+		VALUES ($1, $2, $3, $4)
+	`, userID, videoID, title, thumb)
+	return err
+}
+
+func (s *PostgresStorage) GetHistory(userID int64, limit, offset int) ([]*AnalysisHistory, error) {
+	rows, err := s.db.Query(`
+		SELECT id, video_id, video_title, thumbnail_url, created_at 
+		FROM analysis_history 
+		WHERE user_id = $1 
+		ORDER BY created_at DESC 
+		LIMIT $2 OFFSET $3
+	`, userID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var history []*AnalysisHistory
+	for rows.Next() {
+		h := &AnalysisHistory{UserID: userID}
+		if err := rows.Scan(&h.ID, &h.VideoID, &h.VideoTitle, &h.ThumbnailURL, &h.CreatedAt); err != nil {
+			return nil, err
+		}
+		history = append(history, h)
+	}
+	return history, nil
+}

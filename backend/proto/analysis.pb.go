@@ -793,7 +793,7 @@ const file_proto_analysis_proto_rawDesc = "" +
 	"\rStartAnalysis\x12\x19.analysis.AnalysisRequest\x1a\x1a.analysis.AnalysisResponse\x12F\n" +
 	"\x0eStreamProgress\x12\x19.analysis.ProgressRequest\x1a\x17.analysis.ProgressEvent0\x01\x12>\n" +
 	"\tGetResult\x12\x17.analysis.ResultRequest\x1a\x18.analysis.AnalysisResult\x12C\n" +
-	"\x0eCancelAnalysis\x12\x17.analysis.CancelRequest\x1a\x18.analysis.CancelResponseB3Z1github.com/your-org/silver-guardian/backend/protob\x06proto3"
+	"\x0eCancelAnalysis\x12\x17.analysis.CancelRequest\x1a\x18.analysis.CancelResponseB3Z1github.com/vanillaturtlechips/silver-guardian/backend/protob\x06proto3"
 
 var (
 	file_proto_analysis_proto_rawDescOnce sync.Once

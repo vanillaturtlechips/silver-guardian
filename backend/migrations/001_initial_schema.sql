@@ -60,5 +60,36 @@ CREATE TABLE IF NOT EXISTS comments (
     analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 1. 사용자 테이블 (구글 로그인 전용)
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(100),
+    picture_url TEXT, -- 프로필 이미지
+    provider_id VARCHAR(255), -- 구글 고유 ID
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. 구독 정보 테이블 (심플 버전)
+CREATE TABLE subscriptions (
+    user_id INT REFERENCES users(id),
+    plan_type VARCHAR(20) DEFAULT 'free', -- 'free', 'pro'
+    start_date TIMESTAMP,
+    end_date TIMESTAMP, -- NULL이면 무제한 or 만료 없음
+    PRIMARY KEY (user_id)
+);
+
+-- 3. 분석 이력 테이블 (유저와 연결)
+CREATE TABLE analysis_history (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id),
+    video_id VARCHAR(50) NOT NULL,
+    video_title TEXT,
+    thumbnail_url TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    -- 분석 결과 JSON은 용량이 크므로 필요하다면 별도 저장하거나, 다시 요청하도록 설계
+);
+
+
 CREATE INDEX idx_comments_video ON comments(video_id);
 CREATE INDEX idx_comments_rank ON comments(video_id, rank);

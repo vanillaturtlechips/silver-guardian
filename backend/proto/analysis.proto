@@ -2,8 +2,9 @@ syntax = "proto3";
 
 package analysis;
 
-option go_package = "github.com/your-org/silver-guardian/backend/proto";
+option go_package = "github.com/vanillaturtlechips/silver-guardian/backend/proto";
 
+// 서비스 정의
 service AnalysisService {
   // 분석 시작
   rpc StartAnalysis(AnalysisRequest) returns (AnalysisResponse);
@@ -14,19 +15,27 @@ service AnalysisService {
   // 결과 조회
   rpc GetResult(ResultRequest) returns (AnalysisResult);
   
-  // 작업 취소
+  // 작업 취소 (선택 사항)
   rpc CancelAnalysis(CancelRequest) returns (CancelResponse);
+
+  // Auth & User 기능을 위한 RPC 추가 ---
+  rpc LoginWithGoogle (LoginRequest) returns (LoginResponse);
+  rpc GetUserProfile (GetProfileRequest) returns (UserProfileResponse);
+  rpc GetUserHistory (GetHistoryRequest) returns (HistoryResponse);
 }
+
+// --- 메시지 정의 ---
 
 message AnalysisRequest {
   string video_url = 1;
   AnalysisOptions options = 2;
+  string user_id = 3; 
 }
 
 message AnalysisOptions {
   int32 sensitivity = 1;  // 0=Low, 1=Medium, 2=High
   bool analyze_comments = 2;
-  int32 top_comments_count = 3;  // 기본 10
+  int32 top_comments_count = 3;
 }
 
 message AnalysisResponse {
@@ -43,7 +52,7 @@ message ProgressEvent {
   string job_id = 1;
   string type = 2;  // "log", "progress", "complete", "error"
   string message = 3;
-  int32 progress = 4;  // 0-100
+  int32 progress = 4;
   string timestamp = 5;
 }
 
@@ -88,4 +97,54 @@ message CancelResponse {
   string job_id = 1;
   bool cancelled = 2;
   string message = 3;
+}
+
+// --- [NEW] Auth & User Messages ---
+
+message LoginRequest {
+  string id_token = 1; // 프론트(Google)에서 받은 토큰
+}
+
+message LoginResponse {
+  string access_token = 1; // 서버가 발급한 JWT
+  User user = 2;
+}
+
+message GetProfileRequest {
+  string user_id = 1; // JWT에서 추출하거나 프론트가 보낸 ID
+}
+
+message UserProfileResponse {
+  User user = 1;
+  Subscription subscription = 2;
+}
+
+message GetHistoryRequest {
+  string user_id = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message HistoryResponse {
+  repeated HistoryItem items = 1;
+}
+
+message User {
+  int64 id = 1;
+  string email = 2;
+  string name = 3;
+  string picture_url = 4;
+}
+
+message Subscription {
+  string plan_type = 1; // 'free', 'pro'
+  string start_date = 2;
+  string end_date = 3;
+}
+
+message HistoryItem {
+  string video_id = 1;
+  string video_title = 2;
+  string thumbnail_url = 3;
+  string analyzed_at = 4;
 }

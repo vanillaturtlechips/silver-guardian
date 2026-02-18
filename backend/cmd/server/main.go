@@ -4,7 +4,7 @@ import (
     "log"
     "os"
 
-    "github.com/your-org/silver-guardian/backend/internal/app"
+    "github.com/vanillaturtlechips/silver-guardian/backend/internal/app"
 )
 
 func main() {

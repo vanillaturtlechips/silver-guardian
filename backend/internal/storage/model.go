@@ -57,6 +57,31 @@ type Comment struct {
     AnalyzedAt time.Time `db:"analyzed_at"`
 }
 
+type User struct {
+	ID         int64     `json:"id"`
+	Email      string    `json:"email"`
+	Name       string    `json:"name"`
+	PictureURL string    `json:"picture_url"`
+	ProviderID string    `json:"provider_id"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type Subscription struct {
+	UserID    int64        `json:"user_id"`
+	PlanType  string       `json:"plan_type"`
+	StartDate sql.NullTime `json:"start_date"`
+	EndDate   sql.NullTime `json:"end_date"`
+}
+
+type AnalysisHistory struct {
+	ID           int64     `json:"id"`
+	UserID       int64     `json:"user_id"`
+	VideoID      string    `json:"video_id"`
+	VideoTitle   string    `json:"video_title"`
+	ThumbnailURL string    `json:"thumbnail_url"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
 // Job statuses
 const (
     StatusPending    = "pending"
