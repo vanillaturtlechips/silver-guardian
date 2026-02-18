@@ -116,3 +116,10 @@ terraform apply -auto-approve
 echo ""
 echo -e "${GREEN}=== 🎉 배포 완료! ===${NC}"
 terraform output
+
+echo ""
+echo -e "${GREEN}[4/4] kubectl 설정 업데이트${NC}"
+aws eks update-kubeconfig --region ap-northeast-2 --name silver-guardian-cluster
+
+
+echo -e "${GREEN}=== 🚀 모든 배포 완료! ===${NC}"

@@ -17,6 +17,10 @@ import (
 	"github.com/vanillaturtlechips/silver-guardian/backend/internal/worker"
 	"github.com/vanillaturtlechips/silver-guardian/backend/internal/youtube"
 	pb "github.com/vanillaturtlechips/silver-guardian/backend/proto"
+
+	"net/http"
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
+
 )
 
 type App struct {
@@ -45,7 +49,7 @@ func New(configPath, env string) (*App, error) {
 	// 2. DB 연결 (PostgreSQL)
 	// config.go의 DSN() 메소드 활용
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		cfg.Database.Host, cfg.Database.Port, cfg.Database.User, cfg.Database.Password, cfg.Database.Name, "disable") // 로컬 개발용 disable 강제
+		cfg.Database.Host, cfg.Database.Port, cfg.Database.User, cfg.Database.Password, cfg.Database.Name, cfg.Database.SSLMode)
 
 	store, err := storage.NewPostgresStore(dsn, 25, 25)
 	if err != nil {
@@ -109,8 +113,26 @@ func New(configPath, env string) (*App, error) {
 
 // Run starts the gRPC server
 func (a *App) Run() error {
-	log.Printf("Starting gRPC server on port :%d", a.cfg.Server.GRPCPort)
-	return a.grpcServer.Serve(a.listener)
+    wrappedGrpc := grpcweb.WrapServer(a.grpcServer,
+        grpcweb.WithOriginFunc(func(origin string) bool { return true }),
+    )
+
+    httpServer := &http.Server{
+        Addr: ":8080",
+        Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            wrappedGrpc.ServeHTTP(w, r)
+        }),
+    }
+
+    go func() {
+        log.Printf("gRPC-Web server (HTTP) listening on port 8080")
+        if err := httpServer.ListenAndServe(); err != nil {
+            log.Fatalf("gRPC-Web server failed: %v", err)
+        }
+    }()
+
+    log.Printf("Starting gRPC server on port :%d", a.cfg.Server.GRPCPort)
+    return a.grpcServer.Serve(a.listener)
 }
 
 // Stop cleans up resources
