@@ -25,6 +25,7 @@ type AnalysisRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	VideoUrl      string                 `protobuf:"bytes,1,opt,name=video_url,json=videoUrl,proto3" json:"video_url,omitempty"`
 	Options       *AnalysisOptions       `protobuf:"bytes,2,opt,name=options,proto3" json:"options,omitempty"`
+	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -73,11 +74,18 @@ func (x *AnalysisRequest) GetOptions() *AnalysisOptions {
 	return nil
 }
 
+func (x *AnalysisRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 type AnalysisOptions struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Sensitivity      int32                  `protobuf:"varint,1,opt,name=sensitivity,proto3" json:"sensitivity,omitempty"` // 0=Low, 1=Medium, 2=High
 	AnalyzeComments  bool                   `protobuf:"varint,2,opt,name=analyze_comments,json=analyzeComments,proto3" json:"analyze_comments,omitempty"`
-	TopCommentsCount int32                  `protobuf:"varint,3,opt,name=top_comments_count,json=topCommentsCount,proto3" json:"top_comments_count,omitempty"` // 기본 10
+	TopCommentsCount int32                  `protobuf:"varint,3,opt,name=top_comments_count,json=topCommentsCount,proto3" json:"top_comments_count,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -242,7 +250,7 @@ type ProgressEvent struct {
 	JobId         string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
 	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"` // "log", "progress", "complete", "error"
 	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
-	Progress      int32                  `protobuf:"varint,4,opt,name=progress,proto3" json:"progress,omitempty"` // 0-100
+	Progress      int32                  `protobuf:"varint,4,opt,name=progress,proto3" json:"progress,omitempty"`
 	Timestamp     string                 `protobuf:"bytes,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -729,14 +737,523 @@ func (x *CancelResponse) GetMessage() string {
 	return ""
 }
 
+type LoginRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	IdToken       string                 `protobuf:"bytes,1,opt,name=id_token,json=idToken,proto3" json:"id_token,omitempty"` // 프론트(Google)에서 받은 토큰
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LoginRequest) Reset() {
+	*x = LoginRequest{}
+	mi := &file_proto_analysis_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LoginRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LoginRequest) ProtoMessage() {}
+
+func (x *LoginRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_analysis_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LoginRequest.ProtoReflect.Descriptor instead.
+func (*LoginRequest) Descriptor() ([]byte, []int) {
+	return file_proto_analysis_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *LoginRequest) GetIdToken() string {
+	if x != nil {
+		return x.IdToken
+	}
+	return ""
+}
+
+type LoginResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"` // 서버가 발급한 JWT
+	User          *User                  `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LoginResponse) Reset() {
+	*x = LoginResponse{}
+	mi := &file_proto_analysis_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LoginResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LoginResponse) ProtoMessage() {}
+
+func (x *LoginResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_analysis_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LoginResponse.ProtoReflect.Descriptor instead.
+func (*LoginResponse) Descriptor() ([]byte, []int) {
+	return file_proto_analysis_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *LoginResponse) GetAccessToken() string {
+	if x != nil {
+		return x.AccessToken
+	}
+	return ""
+}
+
+func (x *LoginResponse) GetUser() *User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+type GetProfileRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // JWT에서 추출하거나 프론트가 보낸 ID
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetProfileRequest) Reset() {
+	*x = GetProfileRequest{}
+	mi := &file_proto_analysis_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetProfileRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetProfileRequest) ProtoMessage() {}
+
+func (x *GetProfileRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_analysis_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetProfileRequest.ProtoReflect.Descriptor instead.
+func (*GetProfileRequest) Descriptor() ([]byte, []int) {
+	return file_proto_analysis_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetProfileRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type UserProfileResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	Subscription  *Subscription          `protobuf:"bytes,2,opt,name=subscription,proto3" json:"subscription,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserProfileResponse) Reset() {
+	*x = UserProfileResponse{}
+	mi := &file_proto_analysis_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserProfileResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserProfileResponse) ProtoMessage() {}
+
+func (x *UserProfileResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_analysis_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserProfileResponse.ProtoReflect.Descriptor instead.
+func (*UserProfileResponse) Descriptor() ([]byte, []int) {
+	return file_proto_analysis_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *UserProfileResponse) GetUser() *User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+func (x *UserProfileResponse) GetSubscription() *Subscription {
+	if x != nil {
+		return x.Subscription
+	}
+	return nil
+}
+
+type GetHistoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Page          int32                  `protobuf:"varint,2,opt,name=page,proto3" json:"page,omitempty"`
+	PageSize      int32                  `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetHistoryRequest) Reset() {
+	*x = GetHistoryRequest{}
+	mi := &file_proto_analysis_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetHistoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetHistoryRequest) ProtoMessage() {}
+
+func (x *GetHistoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_analysis_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetHistoryRequest.ProtoReflect.Descriptor instead.
+func (*GetHistoryRequest) Descriptor() ([]byte, []int) {
+	return file_proto_analysis_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GetHistoryRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *GetHistoryRequest) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *GetHistoryRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+type HistoryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*HistoryItem         `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HistoryResponse) Reset() {
+	*x = HistoryResponse{}
+	mi := &file_proto_analysis_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HistoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HistoryResponse) ProtoMessage() {}
+
+func (x *HistoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_analysis_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HistoryResponse.ProtoReflect.Descriptor instead.
+func (*HistoryResponse) Descriptor() ([]byte, []int) {
+	return file_proto_analysis_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *HistoryResponse) GetItems() []*HistoryItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+type User struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	PictureUrl    string                 `protobuf:"bytes,4,opt,name=picture_url,json=pictureUrl,proto3" json:"picture_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *User) Reset() {
+	*x = User{}
+	mi := &file_proto_analysis_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *User) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*User) ProtoMessage() {}
+
+func (x *User) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_analysis_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use User.ProtoReflect.Descriptor instead.
+func (*User) Descriptor() ([]byte, []int) {
+	return file_proto_analysis_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *User) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *User) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *User) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *User) GetPictureUrl() string {
+	if x != nil {
+		return x.PictureUrl
+	}
+	return ""
+}
+
+type Subscription struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlanType      string                 `protobuf:"bytes,1,opt,name=plan_type,json=planType,proto3" json:"plan_type,omitempty"` // 'free', 'pro'
+	StartDate     string                 `protobuf:"bytes,2,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate       string                 `protobuf:"bytes,3,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Subscription) Reset() {
+	*x = Subscription{}
+	mi := &file_proto_analysis_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Subscription) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Subscription) ProtoMessage() {}
+
+func (x *Subscription) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_analysis_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Subscription.ProtoReflect.Descriptor instead.
+func (*Subscription) Descriptor() ([]byte, []int) {
+	return file_proto_analysis_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *Subscription) GetPlanType() string {
+	if x != nil {
+		return x.PlanType
+	}
+	return ""
+}
+
+func (x *Subscription) GetStartDate() string {
+	if x != nil {
+		return x.StartDate
+	}
+	return ""
+}
+
+func (x *Subscription) GetEndDate() string {
+	if x != nil {
+		return x.EndDate
+	}
+	return ""
+}
+
+type HistoryItem struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	VideoId       string                 `protobuf:"bytes,1,opt,name=video_id,json=videoId,proto3" json:"video_id,omitempty"`
+	VideoTitle    string                 `protobuf:"bytes,2,opt,name=video_title,json=videoTitle,proto3" json:"video_title,omitempty"`
+	ThumbnailUrl  string                 `protobuf:"bytes,3,opt,name=thumbnail_url,json=thumbnailUrl,proto3" json:"thumbnail_url,omitempty"`
+	AnalyzedAt    string                 `protobuf:"bytes,4,opt,name=analyzed_at,json=analyzedAt,proto3" json:"analyzed_at,omitempty"`
+	SafetyScore   int32                  `protobuf:"varint,5,opt,name=safety_score,json=safetyScore,proto3" json:"safety_score,omitempty"`
+	JobId         string                 `protobuf:"bytes,6,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HistoryItem) Reset() {
+	*x = HistoryItem{}
+	mi := &file_proto_analysis_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HistoryItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HistoryItem) ProtoMessage() {}
+
+func (x *HistoryItem) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_analysis_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HistoryItem.ProtoReflect.Descriptor instead.
+func (*HistoryItem) Descriptor() ([]byte, []int) {
+	return file_proto_analysis_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *HistoryItem) GetVideoId() string {
+	if x != nil {
+		return x.VideoId
+	}
+	return ""
+}
+
+func (x *HistoryItem) GetVideoTitle() string {
+	if x != nil {
+		return x.VideoTitle
+	}
+	return ""
+}
+
+func (x *HistoryItem) GetThumbnailUrl() string {
+	if x != nil {
+		return x.ThumbnailUrl
+	}
+	return ""
+}
+
+func (x *HistoryItem) GetAnalyzedAt() string {
+	if x != nil {
+		return x.AnalyzedAt
+	}
+	return ""
+}
+
+func (x *HistoryItem) GetSafetyScore() int32 {
+	if x != nil {
+		return x.SafetyScore
+	}
+	return 0
+}
+
+func (x *HistoryItem) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
 var File_proto_analysis_proto protoreflect.FileDescriptor
 
 const file_proto_analysis_proto_rawDesc = "" +
 	"\n" +
-	"\x14proto/analysis.proto\x12\banalysis\"c\n" +
+	"\x14proto/analysis.proto\x12\banalysis\"|\n" +
 	"\x0fAnalysisRequest\x12\x1b\n" +
 	"\tvideo_url\x18\x01 \x01(\tR\bvideoUrl\x123\n" +
-	"\aoptions\x18\x02 \x01(\v2\x19.analysis.AnalysisOptionsR\aoptions\"\x8c\x01\n" +
+	"\aoptions\x18\x02 \x01(\v2\x19.analysis.AnalysisOptionsR\aoptions\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\"\x8c\x01\n" +
 	"\x0fAnalysisOptions\x12 \n" +
 	"\vsensitivity\x18\x01 \x01(\x05R\vsensitivity\x12)\n" +
 	"\x10analyze_comments\x18\x02 \x01(\bR\x0fanalyzeComments\x12,\n" +
@@ -788,12 +1305,51 @@ const file_proto_analysis_proto_rawDesc = "" +
 	"\x0eCancelResponse\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x1c\n" +
 	"\tcancelled\x18\x02 \x01(\bR\tcancelled\x12\x18\n" +
-	"\amessage\x18\x03 \x01(\tR\amessage2\xa6\x02\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\")\n" +
+	"\fLoginRequest\x12\x19\n" +
+	"\bid_token\x18\x01 \x01(\tR\aidToken\"V\n" +
+	"\rLoginResponse\x12!\n" +
+	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12\"\n" +
+	"\x04user\x18\x02 \x01(\v2\x0e.analysis.UserR\x04user\",\n" +
+	"\x11GetProfileRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"u\n" +
+	"\x13UserProfileResponse\x12\"\n" +
+	"\x04user\x18\x01 \x01(\v2\x0e.analysis.UserR\x04user\x12:\n" +
+	"\fsubscription\x18\x02 \x01(\v2\x16.analysis.SubscriptionR\fsubscription\"]\n" +
+	"\x11GetHistoryRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x12\n" +
+	"\x04page\x18\x02 \x01(\x05R\x04page\x12\x1b\n" +
+	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\">\n" +
+	"\x0fHistoryResponse\x12+\n" +
+	"\x05items\x18\x01 \x03(\v2\x15.analysis.HistoryItemR\x05items\"a\n" +
+	"\x04User\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x14\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1f\n" +
+	"\vpicture_url\x18\x04 \x01(\tR\n" +
+	"pictureUrl\"e\n" +
+	"\fSubscription\x12\x1b\n" +
+	"\tplan_type\x18\x01 \x01(\tR\bplanType\x12\x1d\n" +
+	"\n" +
+	"start_date\x18\x02 \x01(\tR\tstartDate\x12\x19\n" +
+	"\bend_date\x18\x03 \x01(\tR\aendDate\"\xc9\x01\n" +
+	"\vHistoryItem\x12\x19\n" +
+	"\bvideo_id\x18\x01 \x01(\tR\avideoId\x12\x1f\n" +
+	"\vvideo_title\x18\x02 \x01(\tR\n" +
+	"videoTitle\x12#\n" +
+	"\rthumbnail_url\x18\x03 \x01(\tR\fthumbnailUrl\x12\x1f\n" +
+	"\vanalyzed_at\x18\x04 \x01(\tR\n" +
+	"analyzedAt\x12!\n" +
+	"\fsafety_score\x18\x05 \x01(\x05R\vsafetyScore\x12\x15\n" +
+	"\x06job_id\x18\x06 \x01(\tR\x05jobId2\x82\x04\n" +
 	"\x0fAnalysisService\x12F\n" +
 	"\rStartAnalysis\x12\x19.analysis.AnalysisRequest\x1a\x1a.analysis.AnalysisResponse\x12F\n" +
 	"\x0eStreamProgress\x12\x19.analysis.ProgressRequest\x1a\x17.analysis.ProgressEvent0\x01\x12>\n" +
 	"\tGetResult\x12\x17.analysis.ResultRequest\x1a\x18.analysis.AnalysisResult\x12C\n" +
-	"\x0eCancelAnalysis\x12\x17.analysis.CancelRequest\x1a\x18.analysis.CancelResponseB3Z1github.com/vanillaturtlechips/silver-guardian/backend/protob\x06proto3"
+	"\x0eCancelAnalysis\x12\x17.analysis.CancelRequest\x1a\x18.analysis.CancelResponse\x12B\n" +
+	"\x0fLoginWithGoogle\x12\x16.analysis.LoginRequest\x1a\x17.analysis.LoginResponse\x12L\n" +
+	"\x0eGetUserProfile\x12\x1b.analysis.GetProfileRequest\x1a\x1d.analysis.UserProfileResponse\x12H\n" +
+	"\x0eGetUserHistory\x12\x1b.analysis.GetHistoryRequest\x1a\x19.analysis.HistoryResponseB=Z;github.com/vanillaturtlechips/silver-guardian/backend/protob\x06proto3"
 
 var (
 	file_proto_analysis_proto_rawDescOnce sync.Once
@@ -807,37 +1363,56 @@ func file_proto_analysis_proto_rawDescGZIP() []byte {
 	return file_proto_analysis_proto_rawDescData
 }
 
-var file_proto_analysis_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_proto_analysis_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_proto_analysis_proto_goTypes = []any{
-	(*AnalysisRequest)(nil),  // 0: analysis.AnalysisRequest
-	(*AnalysisOptions)(nil),  // 1: analysis.AnalysisOptions
-	(*AnalysisResponse)(nil), // 2: analysis.AnalysisResponse
-	(*ProgressRequest)(nil),  // 3: analysis.ProgressRequest
-	(*ProgressEvent)(nil),    // 4: analysis.ProgressEvent
-	(*ResultRequest)(nil),    // 5: analysis.ResultRequest
-	(*AnalysisResult)(nil),   // 6: analysis.AnalysisResult
-	(*VideoMetadata)(nil),    // 7: analysis.VideoMetadata
-	(*Comment)(nil),          // 8: analysis.Comment
-	(*CancelRequest)(nil),    // 9: analysis.CancelRequest
-	(*CancelResponse)(nil),   // 10: analysis.CancelResponse
+	(*AnalysisRequest)(nil),     // 0: analysis.AnalysisRequest
+	(*AnalysisOptions)(nil),     // 1: analysis.AnalysisOptions
+	(*AnalysisResponse)(nil),    // 2: analysis.AnalysisResponse
+	(*ProgressRequest)(nil),     // 3: analysis.ProgressRequest
+	(*ProgressEvent)(nil),       // 4: analysis.ProgressEvent
+	(*ResultRequest)(nil),       // 5: analysis.ResultRequest
+	(*AnalysisResult)(nil),      // 6: analysis.AnalysisResult
+	(*VideoMetadata)(nil),       // 7: analysis.VideoMetadata
+	(*Comment)(nil),             // 8: analysis.Comment
+	(*CancelRequest)(nil),       // 9: analysis.CancelRequest
+	(*CancelResponse)(nil),      // 10: analysis.CancelResponse
+	(*LoginRequest)(nil),        // 11: analysis.LoginRequest
+	(*LoginResponse)(nil),       // 12: analysis.LoginResponse
+	(*GetProfileRequest)(nil),   // 13: analysis.GetProfileRequest
+	(*UserProfileResponse)(nil), // 14: analysis.UserProfileResponse
+	(*GetHistoryRequest)(nil),   // 15: analysis.GetHistoryRequest
+	(*HistoryResponse)(nil),     // 16: analysis.HistoryResponse
+	(*User)(nil),                // 17: analysis.User
+	(*Subscription)(nil),        // 18: analysis.Subscription
+	(*HistoryItem)(nil),         // 19: analysis.HistoryItem
 }
 var file_proto_analysis_proto_depIdxs = []int32{
 	1,  // 0: analysis.AnalysisRequest.options:type_name -> analysis.AnalysisOptions
 	7,  // 1: analysis.AnalysisResult.metadata:type_name -> analysis.VideoMetadata
 	8,  // 2: analysis.AnalysisResult.top_comments:type_name -> analysis.Comment
-	0,  // 3: analysis.AnalysisService.StartAnalysis:input_type -> analysis.AnalysisRequest
-	3,  // 4: analysis.AnalysisService.StreamProgress:input_type -> analysis.ProgressRequest
-	5,  // 5: analysis.AnalysisService.GetResult:input_type -> analysis.ResultRequest
-	9,  // 6: analysis.AnalysisService.CancelAnalysis:input_type -> analysis.CancelRequest
-	2,  // 7: analysis.AnalysisService.StartAnalysis:output_type -> analysis.AnalysisResponse
-	4,  // 8: analysis.AnalysisService.StreamProgress:output_type -> analysis.ProgressEvent
-	6,  // 9: analysis.AnalysisService.GetResult:output_type -> analysis.AnalysisResult
-	10, // 10: analysis.AnalysisService.CancelAnalysis:output_type -> analysis.CancelResponse
-	7,  // [7:11] is the sub-list for method output_type
-	3,  // [3:7] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	17, // 3: analysis.LoginResponse.user:type_name -> analysis.User
+	17, // 4: analysis.UserProfileResponse.user:type_name -> analysis.User
+	18, // 5: analysis.UserProfileResponse.subscription:type_name -> analysis.Subscription
+	19, // 6: analysis.HistoryResponse.items:type_name -> analysis.HistoryItem
+	0,  // 7: analysis.AnalysisService.StartAnalysis:input_type -> analysis.AnalysisRequest
+	3,  // 8: analysis.AnalysisService.StreamProgress:input_type -> analysis.ProgressRequest
+	5,  // 9: analysis.AnalysisService.GetResult:input_type -> analysis.ResultRequest
+	9,  // 10: analysis.AnalysisService.CancelAnalysis:input_type -> analysis.CancelRequest
+	11, // 11: analysis.AnalysisService.LoginWithGoogle:input_type -> analysis.LoginRequest
+	13, // 12: analysis.AnalysisService.GetUserProfile:input_type -> analysis.GetProfileRequest
+	15, // 13: analysis.AnalysisService.GetUserHistory:input_type -> analysis.GetHistoryRequest
+	2,  // 14: analysis.AnalysisService.StartAnalysis:output_type -> analysis.AnalysisResponse
+	4,  // 15: analysis.AnalysisService.StreamProgress:output_type -> analysis.ProgressEvent
+	6,  // 16: analysis.AnalysisService.GetResult:output_type -> analysis.AnalysisResult
+	10, // 17: analysis.AnalysisService.CancelAnalysis:output_type -> analysis.CancelResponse
+	12, // 18: analysis.AnalysisService.LoginWithGoogle:output_type -> analysis.LoginResponse
+	14, // 19: analysis.AnalysisService.GetUserProfile:output_type -> analysis.UserProfileResponse
+	16, // 20: analysis.AnalysisService.GetUserHistory:output_type -> analysis.HistoryResponse
+	14, // [14:21] is the sub-list for method output_type
+	7,  // [7:14] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_proto_analysis_proto_init() }
@@ -851,7 +1426,7 @@ func file_proto_analysis_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_analysis_proto_rawDesc), len(file_proto_analysis_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

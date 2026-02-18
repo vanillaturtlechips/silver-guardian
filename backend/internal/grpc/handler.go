@@ -338,6 +338,8 @@ func (s *AnalysisServer) GetUserHistory(ctx context.Context, req *pb.GetHistoryR
 			VideoTitle:   h.VideoTitle,
 			ThumbnailUrl: h.ThumbnailURL,
 			AnalyzedAt:   h.CreatedAt.Format(time.RFC3339),
+			SafetyScore:  int32(h.SafetyScore),
+			JobId:        h.JobID,
 		})
 	}
 

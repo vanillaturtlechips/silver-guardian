@@ -19,15 +19,20 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AnalysisService_StartAnalysis_FullMethodName  = "/analysis.AnalysisService/StartAnalysis"
-	AnalysisService_StreamProgress_FullMethodName = "/analysis.AnalysisService/StreamProgress"
-	AnalysisService_GetResult_FullMethodName      = "/analysis.AnalysisService/GetResult"
-	AnalysisService_CancelAnalysis_FullMethodName = "/analysis.AnalysisService/CancelAnalysis"
+	AnalysisService_StartAnalysis_FullMethodName   = "/analysis.AnalysisService/StartAnalysis"
+	AnalysisService_StreamProgress_FullMethodName  = "/analysis.AnalysisService/StreamProgress"
+	AnalysisService_GetResult_FullMethodName       = "/analysis.AnalysisService/GetResult"
+	AnalysisService_CancelAnalysis_FullMethodName  = "/analysis.AnalysisService/CancelAnalysis"
+	AnalysisService_LoginWithGoogle_FullMethodName = "/analysis.AnalysisService/LoginWithGoogle"
+	AnalysisService_GetUserProfile_FullMethodName  = "/analysis.AnalysisService/GetUserProfile"
+	AnalysisService_GetUserHistory_FullMethodName  = "/analysis.AnalysisService/GetUserHistory"
 )
 
 // AnalysisServiceClient is the client API for AnalysisService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// 서비스 정의
 type AnalysisServiceClient interface {
 	// 분석 시작
 	StartAnalysis(ctx context.Context, in *AnalysisRequest, opts ...grpc.CallOption) (*AnalysisResponse, error)
@@ -35,8 +40,12 @@ type AnalysisServiceClient interface {
 	StreamProgress(ctx context.Context, in *ProgressRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ProgressEvent], error)
 	// 결과 조회
 	GetResult(ctx context.Context, in *ResultRequest, opts ...grpc.CallOption) (*AnalysisResult, error)
-	// 작업 취소
+	// 작업 취소 (선택 사항)
 	CancelAnalysis(ctx context.Context, in *CancelRequest, opts ...grpc.CallOption) (*CancelResponse, error)
+	// Auth & User 기능을 위한 RPC 추가 ---
+	LoginWithGoogle(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
+	GetUserProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*UserProfileResponse, error)
+	GetUserHistory(ctx context.Context, in *GetHistoryRequest, opts ...grpc.CallOption) (*HistoryResponse, error)
 }
 
 type analysisServiceClient struct {
@@ -96,9 +105,41 @@ func (c *analysisServiceClient) CancelAnalysis(ctx context.Context, in *CancelRe
 	return out, nil
 }
 
+func (c *analysisServiceClient) LoginWithGoogle(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LoginResponse)
+	err := c.cc.Invoke(ctx, AnalysisService_LoginWithGoogle_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *analysisServiceClient) GetUserProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*UserProfileResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UserProfileResponse)
+	err := c.cc.Invoke(ctx, AnalysisService_GetUserProfile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *analysisServiceClient) GetUserHistory(ctx context.Context, in *GetHistoryRequest, opts ...grpc.CallOption) (*HistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HistoryResponse)
+	err := c.cc.Invoke(ctx, AnalysisService_GetUserHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AnalysisServiceServer is the server API for AnalysisService service.
 // All implementations must embed UnimplementedAnalysisServiceServer
 // for forward compatibility.
+//
+// 서비스 정의
 type AnalysisServiceServer interface {
 	// 분석 시작
 	StartAnalysis(context.Context, *AnalysisRequest) (*AnalysisResponse, error)
@@ -106,8 +147,12 @@ type AnalysisServiceServer interface {
 	StreamProgress(*ProgressRequest, grpc.ServerStreamingServer[ProgressEvent]) error
 	// 결과 조회
 	GetResult(context.Context, *ResultRequest) (*AnalysisResult, error)
-	// 작업 취소
+	// 작업 취소 (선택 사항)
 	CancelAnalysis(context.Context, *CancelRequest) (*CancelResponse, error)
+	// Auth & User 기능을 위한 RPC 추가 ---
+	LoginWithGoogle(context.Context, *LoginRequest) (*LoginResponse, error)
+	GetUserProfile(context.Context, *GetProfileRequest) (*UserProfileResponse, error)
+	GetUserHistory(context.Context, *GetHistoryRequest) (*HistoryResponse, error)
 	mustEmbedUnimplementedAnalysisServiceServer()
 }
 
@@ -129,6 +174,15 @@ func (UnimplementedAnalysisServiceServer) GetResult(context.Context, *ResultRequ
 }
 func (UnimplementedAnalysisServiceServer) CancelAnalysis(context.Context, *CancelRequest) (*CancelResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CancelAnalysis not implemented")
+}
+func (UnimplementedAnalysisServiceServer) LoginWithGoogle(context.Context, *LoginRequest) (*LoginResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method LoginWithGoogle not implemented")
+}
+func (UnimplementedAnalysisServiceServer) GetUserProfile(context.Context, *GetProfileRequest) (*UserProfileResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUserProfile not implemented")
+}
+func (UnimplementedAnalysisServiceServer) GetUserHistory(context.Context, *GetHistoryRequest) (*HistoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUserHistory not implemented")
 }
 func (UnimplementedAnalysisServiceServer) mustEmbedUnimplementedAnalysisServiceServer() {}
 func (UnimplementedAnalysisServiceServer) testEmbeddedByValue()                         {}
@@ -216,6 +270,60 @@ func _AnalysisService_CancelAnalysis_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AnalysisService_LoginWithGoogle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LoginRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AnalysisServiceServer).LoginWithGoogle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AnalysisService_LoginWithGoogle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AnalysisServiceServer).LoginWithGoogle(ctx, req.(*LoginRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AnalysisService_GetUserProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetProfileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AnalysisServiceServer).GetUserProfile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AnalysisService_GetUserProfile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AnalysisServiceServer).GetUserProfile(ctx, req.(*GetProfileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AnalysisService_GetUserHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AnalysisServiceServer).GetUserHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AnalysisService_GetUserHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AnalysisServiceServer).GetUserHistory(ctx, req.(*GetHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AnalysisService_ServiceDesc is the grpc.ServiceDesc for AnalysisService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -234,6 +342,18 @@ var AnalysisService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CancelAnalysis",
 			Handler:    _AnalysisService_CancelAnalysis_Handler,
+		},
+		{
+			MethodName: "LoginWithGoogle",
+			Handler:    _AnalysisService_LoginWithGoogle_Handler,
+		},
+		{
+			MethodName: "GetUserProfile",
+			Handler:    _AnalysisService_GetUserProfile_Handler,
+		},
+		{
+			MethodName: "GetUserHistory",
+			Handler:    _AnalysisService_GetUserHistory_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

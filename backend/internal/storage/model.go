@@ -74,12 +74,14 @@ type Subscription struct {
 }
 
 type AnalysisHistory struct {
-	ID           int64     `json:"id"`
-	UserID       int64     `json:"user_id"`
-	VideoID      string    `json:"video_id"`
-	VideoTitle   string    `json:"video_title"`
-	ThumbnailURL string    `json:"thumbnail_url"`
-	CreatedAt    time.Time `json:"created_at"`
+    ID           int64     `json:"id"`
+    UserID       int64     `json:"user_id"`
+    VideoID      string    `json:"video_id"`
+    VideoTitle   string    `json:"video_title"`
+    ThumbnailURL string    `json:"thumbnail_url"`
+    CreatedAt    time.Time `json:"created_at"`
+    SafetyScore  int       `json:"safety_score"`
+    JobID        string    `json:"job_id"`
 }
 
 // Job statuses

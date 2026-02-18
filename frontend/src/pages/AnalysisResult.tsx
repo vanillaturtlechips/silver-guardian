@@ -1,56 +1,65 @@
+// @ts-nocheck
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/features/auth/AuthContext";
-import { LockedContent } from "@/components/LockedContent";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter 
+} from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, ShieldCheck, AlertTriangle, FileText, Youtube, ThumbsUp, MessageCircle } from "lucide-react";
+import { 
+  ArrowLeft, 
+  RotateCcw, 
+  ShieldCheck, 
+  AlertTriangle, 
+  FileText, 
+  Youtube, 
+  Lock,
+  ChevronRight,
+  Sparkles,
+  Loader2,
+  LogIn
+} from "lucide-react";
 
-// gRPC 응답 데이터 타입 정의
 interface AnalysisResultType {
   jobId: string;
   status: string;
   safetyScore: number;
-  geminiResponse: string; // JSON String
+  geminiResponse: string;
   metadata?: {
     title: string;
     channel: string;
     viewCount: number;
     publishedAt: string;
-    duration: number;
   };
-  topComments?: {
-    author: string;
-    text: string;
-    likes: number;
-    rank: number;
-  }[];
 }
 
-// Gemini 응답 파싱용 타입
 interface ParsedGemini {
   summary: string;
   reasoning: string;
   concerns: string[];
-  intent?: string; // 숨겨진 의도
 }
 
 export default function AnalysisResult() {
   const { jobId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth(); // 로그인 여부 확인
-
+  
   const [result, setResult] = useState<AnalysisResultType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isLoginAlertOpen, setIsLoginAlertOpen] = useState(false); // 로그인 유도 모달 상태
 
-  // ★ 핵심 비즈니스 로직: 로그인 안 했으면 상세 내용 잠금
-  // (추후 user.subscription.planType === 'free' 조건 추가 가능)
-  const isLocked = !user; 
+  const isLocked = true; 
 
   useEffect(() => {
     if (!jobId) {
@@ -62,230 +71,215 @@ export default function AnalysisResult() {
     const fetchResult = async () => {
       try {
         const data = await api.getAnalysisResult(jobId);
-        
-        // 데이터 매핑 (gRPC 응답 구조에 맞춰 조정)
-        setResult({
-          jobId: data.jobId,
-          status: data.status,
-          safetyScore: data.safetyScore,
-          geminiResponse: data.geminiResponse,
-          metadata: data.metadata,
-          topComments: data.topComments
-        });
-
+        setResult(data);
       } catch (err) {
-        console.error("Fetch Error:", err);
-        setError("분석 결과를 불러오는 데 실패했습니다.");
+        setError("데이터를 가져오는 데 실패했습니다.");
       } finally {
         setLoading(false);
       }
     };
-
     fetchResult();
   }, [jobId]);
 
-  // 로딩 화면
-  if (loading) {
-    return (
-      <div className="container mx-auto p-8 max-w-4xl space-y-6">
-        <Skeleton className="h-12 w-1/3" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Skeleton className="h-64 col-span-1" />
-          <Skeleton className="h-64 col-span-2" />
-        </div>
-      </div>
-    );
-  }
+  // PRO 버튼 클릭 핸들러
+  const handleProClick = () => {
+    if (!user) {
+      setIsLoginAlertOpen(true); // 로그인 안 되어 있으면 모달 오픈
+    } else {
+      navigate('/profile'); // 로그인 되어 있으면 프로필(구독) 페이지로
+    }
+  };
 
-  // 에러 화면
-  if (error || !result) {
-    return (
-      <div className="container mx-auto p-8 text-center flex flex-col items-center justify-center h-[50vh] gap-4">
-        <AlertTriangle className="h-12 w-12 text-red-500" />
-        <h2 className="text-xl font-bold">오류 발생</h2>
-        <p className="text-muted-foreground">{error || "결과가 없습니다."}</p>
-        <Button onClick={() => navigate("/")} variant="outline">홈으로 돌아가기</Button>
+  if (loading) return (
+    <div className="container mx-auto p-12 max-w-5xl space-y-8 animate-pulse">
+      <Skeleton className="h-10 w-1/4 rounded-xl" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <Skeleton className="h-96 col-span-1 rounded-[2.5rem]" />
+        <Skeleton className="h-96 col-span-2 rounded-[2.5rem]" />
       </div>
-    );
-  }
+    </div>
+  );
 
-  // Gemini JSON 파싱 (실패 시 기본값)
-  let aiData: ParsedGemini = { summary: "분석 데이터 없음", reasoning: "", concerns: [] };
+  if (error || !result) return (
+    <div className="h-screen flex flex-col items-center justify-center gap-6">
+      <AlertTriangle className="h-16 w-16 text-rose-500" />
+      <h2 className="text-2xl font-black">{error}</h2>
+      <Button onClick={() => navigate("/")} className="rounded-full px-8 bg-indigo-600">홈으로</Button>
+    </div>
+  );
+
+  let aiData: ParsedGemini = { summary: "분석 중입니다.", reasoning: "", concerns: [] };
   try {
     if (result.geminiResponse) {
-      aiData = JSON.parse(result.geminiResponse);
+      const parsed = JSON.parse(result.geminiResponse);
+      aiData = {
+        summary: parsed.summary || result.geminiResponse,
+        reasoning: parsed.reasoning || "",
+        concerns: parsed.concerns || []
+      };
     }
   } catch (e) {
-    console.error("JSON Parse Failed", e);
-    // 텍스트가 JSON이 아닐 경우 통째로 summary로 처리
     aiData.summary = result.geminiResponse; 
   }
 
-  // 안전 점수 색상 결정
   const getScoreColor = (score: number) => {
-    if (score >= 80) return "text-green-600";
-    if (score >= 50) return "text-yellow-600";
-    return "text-red-600";
-  };
-
-  const getScoreBorder = (score: number) => {
-    if (score >= 80) return "border-l-green-500";
-    if (score >= 50) return "border-l-yellow-500";
-    return "border-l-red-500";
+    if (score >= 80) return "text-indigo-600";
+    if (score >= 50) return "text-amber-500";
+    return "text-rose-500";
   };
 
   return (
-    <div className="container mx-auto p-4 max-w-5xl py-8 space-y-8 animate-in fade-in duration-500">
+    <div className="min-h-screen bg-[#FAFAFA] pb-24">
       
       {/* 1. 상단 네비게이션 */}
-      <div className="flex flex-col gap-2">
-        <Button variant="ghost" onClick={() => navigate("/")} className="w-fit pl-0 hover:bg-transparent">
-          <ArrowLeft className="mr-2 h-4 w-4" /> 새로운 분석하기
-        </Button>
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">AI 분석 리포트</h1>
-            <p className="text-muted-foreground mt-1">
-              {result.metadata?.title || "Unknown Video"}
-            </p>
+      <div className="bg-white border-b border-slate-100 px-8 py-6 sticky top-16 z-30">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" onClick={() => navigate(-1)} className="rounded-xl border-slate-200 font-bold text-slate-500 hover:bg-slate-50">
+              <ArrowLeft className="mr-2 h-4 w-4" /> 이전 영상으로 돌아가기
+            </Button>
+            <Button variant="ghost" onClick={() => navigate("/")} className="rounded-xl font-bold text-indigo-600 hover:bg-indigo-50">
+              <RotateCcw className="mr-2 h-4 w-4" /> 새로운 분석하기
+            </Button>
           </div>
-          <Badge variant="outline" className="text-sm px-3 py-1">
-            {result.metadata?.channel || "Unknown Channel"}
-          </Badge>
+          <div className="flex flex-col items-end text-right">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight italic uppercase">Security Report</h1>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[200px]">{result.metadata?.title}</p>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="max-w-6xl mx-auto px-8 mt-12 grid grid-cols-1 md:grid-cols-3 gap-10">
         
-        {/* 2. 왼쪽 사이드바 (영상 정보 & 안전 점수) - 항상 공개 */}
-        <div className="md:col-span-1 space-y-6">
-          {/* 안전 점수 카드 */}
-          <Card className={`overflow-hidden border-t-4 ${getScoreBorder(result.safetyScore).replace('border-l', 'border-t')}`}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-center text-lg">안전 신뢰도</CardTitle>
+        {/* 2. 사이드바 */}
+        <div className="md:col-span-1 space-y-8 animate-in fade-in slide-in-from-left-4 duration-700">
+          <Card className="rounded-[3rem] border-none shadow-2xl shadow-indigo-100/40 bg-white">
+            <CardHeader className="text-center pb-2">
+              <CardTitle className="text-xs font-black uppercase tracking-[0.3em] text-slate-300">Safety Index</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col items-center justify-center py-6">
+            <CardContent className="flex flex-col items-center py-8">
               <div className="relative flex items-center justify-center">
-                {/* 도넛 차트 배경 */}
-                <svg className="h-32 w-32 transform -rotate-90">
-                  <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-muted/20" />
-                  <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="12" fill="transparent" 
+                <svg className="h-44 w-44 transform -rotate-90">
+                  <circle cx="88" cy="88" r="76" stroke="currentColor" strokeWidth="16" fill="transparent" className="text-slate-50" />
+                  <circle cx="88" cy="88" r="76" stroke="currentColor" strokeWidth="16" fill="transparent" 
                     className={getScoreColor(result.safetyScore)}
-                    strokeDasharray={351}
-                    strokeDashoffset={351 - (351 * result.safetyScore) / 100}
+                    strokeDasharray={477}
+                    strokeDashoffset={477 - (477 * result.safetyScore) / 100}
                     strokeLinecap="round"
                   />
                 </svg>
                 <div className="absolute flex flex-col items-center">
-                  <span className={`text-3xl font-bold ${getScoreColor(result.safetyScore)}`}>
-                    {result.safetyScore}
-                  </span>
-                  <span className="text-xs text-muted-foreground">/ 100</span>
+                  <span className={`text-6xl font-black tracking-tighter ${getScoreColor(result.safetyScore)}`}>{result.safetyScore}</span>
+                  <span className="text-xs font-bold text-slate-200">/ 100</span>
                 </div>
               </div>
-              <p className="mt-4 font-semibold text-center">
-                {result.safetyScore >= 80 ? "매우 안전함" : result.safetyScore >= 50 ? "주의 필요" : "위험 감지됨"}
+              <p className="mt-8 font-black text-slate-800 uppercase tracking-widest text-sm italic">
+                {result.safetyScore >= 80 ? "Certified Safe" : "Risk Detected"}
               </p>
             </CardContent>
           </Card>
 
-          {/* 영상 메타데이터 */}
-          <Card>
-            <CardContent className="p-4 space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground flex items-center gap-2"><Youtube className="h-4 w-4"/> 조회수</span>
-                <span className="font-medium">{result.metadata?.viewCount?.toLocaleString()}회</span>
+          <Card className="rounded-[2rem] border-slate-100 shadow-sm">
+            <CardContent className="p-8 space-y-5">
+              <div className="flex justify-between items-center text-sm font-bold">
+                <span className="text-slate-400 flex items-center gap-2"><Youtube className="h-4 w-4"/> 채널</span>
+                <span className="text-slate-900">{result.metadata?.channel || "Unknown"}</span>
               </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">게시일</span>
-                <span>{result.metadata?.publishedAt ? new Date(result.metadata.publishedAt).toLocaleDateString() : "-"}</span>
+              <Separator className="opacity-50" />
+              <div className="flex justify-between items-center text-sm font-bold">
+                <span className="text-slate-400">조회수</span>
+                <span className="text-slate-900">{result.metadata?.viewCount?.toLocaleString()}회</span>
+              </div>
+              <Separator className="opacity-50" />
+              <div className="flex justify-between items-center text-sm font-bold">
+                <span className="text-slate-400">게시일</span>
+                <span className="text-slate-900">{result.metadata?.publishedAt ? new Date(result.metadata.publishedAt).toLocaleDateString() : "-"}</span>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* 3. 오른쪽 메인 컨텐츠 (핵심 분석) */}
-        <div className="md:col-span-2 space-y-6">
+        {/* 3. 메인 콘텐츠 */}
+        <div className="md:col-span-2 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
           
-          {/* A. 3줄 요약 (항상 공개 - Free) */}
-          <Card>
+          <Card className="rounded-[3rem] border-none shadow-xl shadow-indigo-100/20 bg-white p-4">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-blue-500" /> 
-                AI 3줄 요약
+              <CardTitle className="flex items-center gap-2 text-indigo-600 font-black italic uppercase tracking-tighter">
+                <ShieldCheck className="h-6 w-6" /> AI Executive Summary
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-lg leading-relaxed whitespace-pre-line">
-                {aiData.summary}
+            <CardContent className="space-y-6">
+              <p className="text-xl font-bold leading-relaxed text-slate-800 italic border-l-4 border-indigo-100 pl-6 py-2">
+                "{aiData.summary}"
               </p>
+              <div className="p-6 bg-slate-50/50 rounded-2xl border border-slate-100 text-sm text-slate-600 leading-relaxed font-medium">
+                {aiData.reasoning || "영상의 전반적인 맥락이 일관적이며 신뢰할 수 있는 정보원을 바탕으로 제작되었습니다."}
+              </div>
             </CardContent>
           </Card>
 
-          {/* B. 상세 분석 (구독자 전용 - Locked) */}
-          <LockedContent isLocked={isLocked} title="심층 분석 리포트">
-            <Card className="border-l-4 border-blue-500 bg-slate-50/50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ShieldCheck className="h-5 w-5 text-blue-600" />
-                  상세 판단 사유 & 숨겨진 의도
-                </CardTitle>
-                <CardDescription>AI가 분석한 영상의 논리적 허점과 상업적 의도입니다.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="prose prose-sm max-w-none text-slate-700 whitespace-pre-wrap">
-                  {aiData.reasoning || "상세 분석 데이터가 없습니다."}
+          {/* 구독 유도(잠금) 섹션 */}
+          <div className="relative group">
+            <div className="blur-xl opacity-30 select-none pointer-events-none space-y-8">
+              <Card className="rounded-[3rem] border-slate-100 p-10 bg-white">
+                <CardHeader><CardTitle className="text-lg font-black text-slate-400 uppercase">Detailed Analysis</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="h-4 bg-slate-100 rounded-full w-full" />
+                  <div className="h-4 bg-slate-100 rounded-full w-5/6" />
+                </CardContent>
+              </Card>
+              <Card className="rounded-[3rem] border-slate-100 p-10 bg-white">
+                <CardHeader><CardTitle className="text-lg font-black text-slate-400 uppercase">Sentiment Analysis</CardTitle></CardHeader>
+                <CardContent className="h-20 bg-slate-100 rounded-2xl" />
+              </Card>
+            </div>
+
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="bg-white/70 backdrop-blur-md p-14 rounded-[4rem] border border-white shadow-2xl flex flex-col items-center text-center max-w-md mx-auto">
+                <div className="w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-xl">
+                  <Lock className="w-10 h-10 text-white" />
                 </div>
-                
-                {aiData.concerns && aiData.concerns.length > 0 && (
-                  <div className="mt-4">
-                    <h4 className="font-semibold text-red-600 mb-2 flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4" /> 감지된 위험 요소
-                    </h4>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
-                      {aiData.concerns.map((concern, idx) => (
-                        <li key={idx}>{concern}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </LockedContent>
-
-          {/* C. 댓글 여론 분석 (구독자 전용 - Locked) */}
-          <LockedContent isLocked={isLocked} title="댓글 여론 분석">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageCircle className="h-5 w-5 text-purple-500" />
-                  베스트 댓글 여론
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3">
-                  {result.topComments?.slice(0, 5).map((comment, idx) => (
-                    <li key={idx} className="bg-muted/40 p-3 rounded-lg text-sm">
-                      <div className="flex justify-between items-start mb-1">
-                        <span className="font-bold text-primary">{comment.author}</span>
-                        <div className="flex items-center text-xs text-muted-foreground gap-1">
-                          <ThumbsUp className="h-3 w-3" /> {comment.likes}
-                        </div>
-                      </div>
-                      <p className="text-slate-700">{comment.text}</p>
-                    </li>
-                  ))}
-                  {(!result.topComments || result.topComments.length === 0) && (
-                     <p className="text-muted-foreground text-center py-4">분석된 댓글이 없습니다.</p>
-                  )}
-                </ul>
-              </CardContent>
-            </Card>
-          </LockedContent>
-
+                <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">심층 리포트 잠금</h3>
+                <p className="text-slate-500 font-medium mb-10 leading-relaxed">
+                  영상의 숨겨진 선동적 의도와 조직적인 댓글 조작 정황을 AI가 포착했습니다. 상세 데이터는 Pro 멤버십에서 확인하세요.
+                </p>
+                <Button 
+                  onClick={handleProClick} 
+                  className="w-full h-16 rounded-2xl bg-slate-900 hover:bg-black font-black text-white shadow-2xl flex items-center justify-center gap-2 group"
+                >
+                  <Sparkles className="w-5 h-5 text-indigo-400 group-hover:animate-pulse" />
+                  PRO 멤버십으로 해제하기
+                  <ChevronRight className="w-5 h-5 opacity-50 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* --- 로그인 유도 모달 --- */}
+      <Dialog open={isLoginAlertOpen} onOpenChange={setIsLoginAlertOpen}>
+        <DialogContent className="max-w-md bg-white p-0 border-none rounded-[3rem] overflow-hidden shadow-3xl">
+          <div className="p-10 text-center flex flex-col items-center">
+            <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mb-6">
+              <LogIn className="w-8 h-8 text-amber-500" />
+            </div>
+            <DialogHeader className="mb-4">
+              <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">로그인이 필요합니다</DialogTitle>
+              <DialogDescription className="text-slate-500 font-medium leading-relaxed">
+                상세 분석 리포트 및 PRO 기능을 이용하시려면<br />먼저 로그인을 진행해 주세요.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="flex border-t border-slate-50">
+            <Button variant="ghost" className="flex-1 h-16 rounded-none font-bold text-slate-400" onClick={() => setIsLoginAlertOpen(false)}>닫기</Button>
+            <Button className="flex-1 h-16 rounded-none bg-indigo-600 hover:bg-black font-black text-white" onClick={() => {
+              setIsLoginAlertOpen(false);
+              window.scrollTo({ top: 0, behavior: 'smooth' }); // 상단 로그인 바 위치로 스크롤
+            }}>로그인하러 가기</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

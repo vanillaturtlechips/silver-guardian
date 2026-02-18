@@ -147,4 +147,6 @@ message HistoryItem {
   string video_title = 2;
   string thumbnail_url = 3;
   string analyzed_at = 4;
+  int32 safety_score = 5;
+  string job_id = 6;
 }

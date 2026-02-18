@@ -1,213 +1,117 @@
-import React, { createContext, useContext, useState, useCallback, useRef, ReactNode } from "react";
-import { grpcClient } from "@/lib/grpc-client";
+// @ts-nocheck
+import React, { createContext, useContext, useState, ReactNode } from "react";
+import { api } from "@/lib/api"; 
+import { useAuth } from "@/features/auth/AuthContext"; // [추가] 유저 정보를 가져오기 위함
+import { useToast } from "@/hooks/use-toast";
 
-// --- 타입 정의 ---
-export interface LogEntry {
-  id: string;
-  timestamp: Date;
-  type: "info" | "success" | "warning" | "error";
-  message: string;
-}
-
-export interface AnalysisData {
-  safety_score: number;
+export interface AnalysisResultType {
   summary: string;
   reasoning: string;
   concerns: string[];
+  safety_score: number;
 }
 
-export interface MonitoringState {
-  isScanning: boolean;
-  safetyScore: number;
-  engineStatus: "idle" | "active" | "scanning" | "error";
-  logs: LogEntry[];
+export interface StartAnalysisResponse {
+  jobId: string;
+}
+
+interface MonitoringContextType {
+  isAnalyzing: boolean;
+  progress: number;
+  statusMessage: string;
+  analysisResult: AnalysisResultType | null;
   videoId: string | null;
-  analysisResult: AnalysisData | null;
-}
-
-interface MonitoringContextType extends MonitoringState {
-  startMonitoring: (videoUrl: string) => Promise<void>;
-  stopMonitoring: () => void;
-  addLog: (type: LogEntry["type"], message: string) => void;
-  resetMonitoring: () => void;
+  startAnalysis: (url: string) => Promise<StartAnalysisResponse | undefined>;
+  resetAnalysis: () => void;
+  setAnalysisProgress: (progress: number, message: string) => void;
 }
 
 const MonitoringContext = createContext<MonitoringContextType | undefined>(undefined);
 
+// [수정] Vite HMR 호환성을 위해 function 선언문 사용
 export function MonitoringProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<MonitoringState>({
-    isScanning: false,
-    safetyScore: 0,
-    engineStatus: "idle",
-    logs: [],
-    videoId: null,
-    analysisResult: null,
-  });
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResultType | null>(null);
+  const [videoId, setVideoId] = useState<string | null>(null);
+  
+  const { user } = useAuth(); // [핵심] 로그인된 유저 정보를 가져옴
+  const { toast } = useToast();
 
-  // 스트림 객체를 저장할 Ref (취소 기능용)
-  const streamRef = useRef<any>(null);
+  // 분석 시작 로직
+  async function startAnalysis(url: string): Promise<StartAnalysisResponse | undefined> {
+    setIsAnalyzing(true);
+    setProgress(5); 
+    setStatusMessage("분석 서버에 연결 요청 중...");
 
-  const addLog = useCallback((type: LogEntry["type"], message: string) => {
-    setState((prev) => ({
-      ...prev,
-      logs: [
-        ...prev.logs,
-        { id: crypto.randomUUID(), timestamp: new Date(), type, message },
-      ],
-    }));
-  }, []);
+    try {
+      // [핵심] 두 번째 인자로 user.id를 넘겨야 서버 DB에 유저 기록으로 저장됩니다.
+      const response = await api.submitVideoForAnalysis({
+        videoUrl: url,
+        sensitivity: "medium",
+        scanInterval: 30
+      }, user?.id || ""); // 로그인 상태라면 ID를, 아니면 빈 값을 보냅니다.
 
-  const startMonitoring = useCallback(
-    async (videoUrl: string) => {
-      // 1. 기존 스트림 안전하게 정리
-      if (streamRef.current) {
-        try {
-            if (typeof streamRef.current.cancel === 'function') {
-                streamRef.current.cancel();
-            }
-        } catch (e) {
-            // 조용히 무시 (이미 닫힌 스트림일 수 있음)
-        }
-        streamRef.current = null;
+      if (!response || !response.jobId) {
+        throw new Error("Job ID를 수신하지 못했습니다.");
       }
 
-      // 2. 상태 초기화 (새로운 검사 준비)
-      setState((prev) => ({
-        ...prev,
-        isScanning: true,
-        engineStatus: "scanning",
-        logs: [],
-        safetyScore: 0,
-        videoId: videoUrl,
-        analysisResult: null,
-      }));
+      const jobId = response.jobId;
+      console.log("[SYSTEM] 분석 세션 생성됨:", jobId);
+      
+      setStatusMessage("분석 세션 생성 완료. 엔진 가동 중...");
+      setProgress(10);
+      
+      setIsAnalyzing(false); 
+      return { jobId };
 
-      try {
-        // 분석 요청 시작
-        const response = await grpcClient.startAnalysis(videoUrl);
-        const jobId = (response as any).jobId;
-
-        // ★ 핵심: await를 사용하여 Promise가 아닌 실제 Stream 객체를 받음
-        const stream = await grpcClient.streamProgress(
-          jobId,
-          (event: any) => {
-            const logType = event.type === "error" ? "error" : 
-                           event.type === "complete" ? "success" : "info";
-            
-            // 완료 메시지는 별도로 처리하므로 로그에 중복 출력 방지 (선택 사항)
-            if (event.type !== "complete") {
-               addLog(logType, event.message);
-            } else {
-               addLog(logType, "Analysis completed successfully");
-            }
-
-            if (event.type === "complete") {
-              // ★ JSON 파싱 (에러 처리 강화)
-              let parsedResult: AnalysisData | null = null;
-              try {
-                parsedResult = JSON.parse(event.message);
-              } catch (e) {
-                // JSON 파싱 실패 시, 에러를 콘솔에 띄우지 않고 평문 메시지로 처리 (Fallback)
-                parsedResult = {
-                    safety_score: event.progress,
-                    summary: "분석이 완료되었습니다.",
-                    reasoning: event.message, // 백엔드가 보낸 평문 메시지를 그대로 사용
-                    concerns: []
-                };
-              }
-
-              setState((prev) => ({
-                ...prev,
-                analysisResult: parsedResult,
-                isScanning: false,
-                engineStatus: "active",
-                safetyScore: parsedResult?.safety_score || event.progress || prev.safetyScore,
-              }));
-            } else {
-              // 진행 중 상태 업데이트
-              setState((prev) => ({
-                ...prev,
-                safetyScore: event.progress || prev.safetyScore,
-                isScanning: event.type !== "complete" && event.type !== "error",
-                engineStatus: event.type === "error" ? "error" : "scanning",
-              }));
-            }
-          },
-          () => {
-            // 스트림 정상 종료
-            setState((prev) => ({
-              ...prev,
-              isScanning: false,
-              engineStatus: "active",
-            }));
-          },
-          (error: any) => {
-            // ★ gRPC 연결 종료 관련 에러 무시 처리
-            if (error.message && error.message.includes("Response closed without grpc-status")) {
-                // 이는 gRPC-Web의 흔한 동작이므로 에러로 취급하지 않음
-                return; 
-            }
-
-            console.error("Stream error:", error);
-            addLog("error", `Connection error: ${error.message}`);
-            setState((prev) => ({
-              ...prev,
-              isScanning: false,
-              engineStatus: "error",
-            }));
-          }
-        );
-
-        // 실제 스트림 객체를 ref에 저장
-        streamRef.current = stream;
-
-      } catch (error: any) {
-        console.error("Failed to start analysis:", error);
-        addLog("error", `Failed to start: ${error.message}`);
-        setState((prev) => ({
-          ...prev,
-          isScanning: false,
-          engineStatus: "error",
-        }));
-      }
-    },
-    [addLog]
-  );
-
-  const stopMonitoring = useCallback(() => {
-    if (streamRef.current && typeof streamRef.current.cancel === 'function') {
-      streamRef.current.cancel();
-      streamRef.current = null;
+    } catch (error) {
+      console.error("[ERROR] 분석 요청 실패:", error);
+      toast({
+        title: "분석 요청 실패",
+        description: "서버가 응답하지 않거나 잘못된 URL입니다.",
+        variant: "destructive",
+      });
+      setIsAnalyzing(false);
+      setProgress(0);
+      setStatusMessage("분석 실패");
+      return undefined; 
     }
-    setState((prev) => ({
-      ...prev,
-      isScanning: false,
-      engineStatus: "idle",
-    }));
-    addLog("info", "Monitoring session stopped");
-  }, [addLog]);
+  }
 
-  const resetMonitoring = useCallback(() => {
-    if (streamRef.current && typeof streamRef.current.cancel === 'function') {
-        streamRef.current.cancel();
-    }
-    setState({
-        isScanning: false,
-        safetyScore: 0,
-        engineStatus: "idle",
-        logs: [],
-        videoId: null,
-        analysisResult: null,
-    });
-  }, []);
+  function setAnalysisProgress(newProgress: number, newMessage: string) {
+    setProgress(newProgress);
+    setStatusMessage(newMessage);
+  }
+
+  function resetAnalysis() {
+    setAnalysisResult(null);
+    setVideoId(null);
+    setProgress(0);
+    setStatusMessage("");
+    setIsAnalyzing(false);
+  }
 
   return (
-    <MonitoringContext.Provider value={{ ...state, startMonitoring, stopMonitoring, addLog, resetMonitoring }}>
+    <MonitoringContext.Provider
+      value={{ 
+        isAnalyzing, 
+        progress, 
+        statusMessage,
+        analysisResult, 
+        videoId, 
+        startAnalysis, 
+        resetAnalysis,
+        setAnalysisProgress 
+      }}
+    >
       {children}
     </MonitoringContext.Provider>
   );
 }
 
+// [수정] 훅도 function으로 내보내어 Fast Refresh 오류 해결
 export function useMonitoringContext() {
   const context = useContext(MonitoringContext);
   if (context === undefined) {

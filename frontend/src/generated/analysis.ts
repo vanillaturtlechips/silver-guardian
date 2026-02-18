@@ -132,6 +132,8 @@ export interface HistoryItem {
   videoTitle: string;
   thumbnailUrl: string;
   analyzedAt: string;
+  safetyScore: number;
+  jobId: string;
 }
 
 function createBaseAnalysisRequest(): AnalysisRequest {
@@ -2014,23 +2016,17 @@ export const Subscription: MessageFns<Subscription> = {
 };
 
 function createBaseHistoryItem(): HistoryItem {
-  return { videoId: "", videoTitle: "", thumbnailUrl: "", analyzedAt: "" };
+  return { videoId: "", videoTitle: "", thumbnailUrl: "", analyzedAt: "", safetyScore: 0, jobId: "" };
 }
 
 export const HistoryItem: MessageFns<HistoryItem> = {
   encode(message: HistoryItem, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.videoId !== "") {
-      writer.uint32(10).string(message.videoId);
-    }
-    if (message.videoTitle !== "") {
-      writer.uint32(18).string(message.videoTitle);
-    }
-    if (message.thumbnailUrl !== "") {
-      writer.uint32(26).string(message.thumbnailUrl);
-    }
-    if (message.analyzedAt !== "") {
-      writer.uint32(34).string(message.analyzedAt);
-    }
+    if (message.videoId !== "") { writer.uint32(10).string(message.videoId); }
+    if (message.videoTitle !== "") { writer.uint32(18).string(message.videoTitle); }
+    if (message.thumbnailUrl !== "") { writer.uint32(26).string(message.thumbnailUrl); }
+    if (message.analyzedAt !== "") { writer.uint32(34).string(message.analyzedAt); }
+    if (message.safetyScore !== 0) { writer.uint32(40).int32(message.safetyScore); }
+    if (message.jobId !== "") { writer.uint32(50).string(message.jobId); }
     return writer;
   },
 
@@ -2041,42 +2037,14 @@ export const HistoryItem: MessageFns<HistoryItem> = {
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.videoId = reader.string();
-          continue;
-        }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.videoTitle = reader.string();
-          continue;
-        }
-        case 3: {
-          if (tag !== 26) {
-            break;
-          }
-
-          message.thumbnailUrl = reader.string();
-          continue;
-        }
-        case 4: {
-          if (tag !== 34) {
-            break;
-          }
-
-          message.analyzedAt = reader.string();
-          continue;
-        }
+        case 1: { if (tag !== 10) break; message.videoId = reader.string(); continue; }
+        case 2: { if (tag !== 18) break; message.videoTitle = reader.string(); continue; }
+        case 3: { if (tag !== 26) break; message.thumbnailUrl = reader.string(); continue; }
+        case 4: { if (tag !== 34) break; message.analyzedAt = reader.string(); continue; }
+        case 5: { if (tag !== 40) break; message.safetyScore = reader.int32(); continue; }
+        case 6: { if (tag !== 50) break; message.jobId = reader.string(); continue; }
       }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
-      }
+      if ((tag & 7) === 4 || tag === 0) break;
       reader.skip(tag & 7);
     }
     return message;
@@ -2084,43 +2052,23 @@ export const HistoryItem: MessageFns<HistoryItem> = {
 
   fromJSON(object: any): HistoryItem {
     return {
-      videoId: isSet(object.videoId)
-        ? globalThis.String(object.videoId)
-        : isSet(object.video_id)
-        ? globalThis.String(object.video_id)
-        : "",
-      videoTitle: isSet(object.videoTitle)
-        ? globalThis.String(object.videoTitle)
-        : isSet(object.video_title)
-        ? globalThis.String(object.video_title)
-        : "",
-      thumbnailUrl: isSet(object.thumbnailUrl)
-        ? globalThis.String(object.thumbnailUrl)
-        : isSet(object.thumbnail_url)
-        ? globalThis.String(object.thumbnail_url)
-        : "",
-      analyzedAt: isSet(object.analyzedAt)
-        ? globalThis.String(object.analyzedAt)
-        : isSet(object.analyzed_at)
-        ? globalThis.String(object.analyzed_at)
-        : "",
+      videoId: isSet(object.videoId) ? globalThis.String(object.videoId) : isSet(object.video_id) ? globalThis.String(object.video_id) : "",
+      videoTitle: isSet(object.videoTitle) ? globalThis.String(object.videoTitle) : isSet(object.video_title) ? globalThis.String(object.video_title) : "",
+      thumbnailUrl: isSet(object.thumbnailUrl) ? globalThis.String(object.thumbnailUrl) : isSet(object.thumbnail_url) ? globalThis.String(object.thumbnail_url) : "",
+      analyzedAt: isSet(object.analyzedAt) ? globalThis.String(object.analyzedAt) : isSet(object.analyzed_at) ? globalThis.String(object.analyzed_at) : "",
+      safetyScore: isSet(object.safetyScore) ? globalThis.Number(object.safetyScore) : isSet(object.safety_score) ? globalThis.Number(object.safety_score) : 0,
+      jobId: isSet(object.jobId) ? globalThis.String(object.jobId) : isSet(object.job_id) ? globalThis.String(object.job_id) : "",
     };
   },
 
   toJSON(message: HistoryItem): unknown {
     const obj: any = {};
-    if (message.videoId !== "") {
-      obj.videoId = message.videoId;
-    }
-    if (message.videoTitle !== "") {
-      obj.videoTitle = message.videoTitle;
-    }
-    if (message.thumbnailUrl !== "") {
-      obj.thumbnailUrl = message.thumbnailUrl;
-    }
-    if (message.analyzedAt !== "") {
-      obj.analyzedAt = message.analyzedAt;
-    }
+    if (message.videoId !== "") { obj.videoId = message.videoId; }
+    if (message.videoTitle !== "") { obj.videoTitle = message.videoTitle; }
+    if (message.thumbnailUrl !== "") { obj.thumbnailUrl = message.thumbnailUrl; }
+    if (message.analyzedAt !== "") { obj.analyzedAt = message.analyzedAt; }
+    if (message.safetyScore !== 0) { obj.safetyScore = Math.round(message.safetyScore); }
+    if (message.jobId !== "") { obj.jobId = message.jobId; }
     return obj;
   },
 
@@ -2133,6 +2081,8 @@ export const HistoryItem: MessageFns<HistoryItem> = {
     message.videoTitle = object.videoTitle ?? "";
     message.thumbnailUrl = object.thumbnailUrl ?? "";
     message.analyzedAt = object.analyzedAt ?? "";
+    message.safetyScore = object.safetyScore ?? 0;
+    message.jobId = object.jobId ?? "";
     return message;
   },
 };
