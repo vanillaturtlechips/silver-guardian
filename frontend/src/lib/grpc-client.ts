@@ -1,75 +1,61 @@
-import { GrpcWebImpl, AnalysisServiceClientImpl, AnalysisRequest } from '../generated/analysis';
+import { 
+  GrpcWebImpl, 
+  AnalysisServiceClientImpl, 
+  AnalysisRequest,
+  LoginRequest,
+  GetProfileRequest,
+  GetHistoryRequest
+} from '../generated/analysis'; // 사용자님의 실제 경로 유지
 
-const GRPC_URL = import.meta.env.VITE_GRPC_URL || 'https://api.silver-guardian.site';
+// [핵심] 스마트 주소 결정 함수
+const getGrpcUrl = () => {
+  if (typeof window !== "undefined" && window.location.hostname === "localhost") {
+    return "http://localhost:8080"; // 로컬 개발용 Envoy 포트
+  }
+  // .env에 값이 있으면 쓰고, 없으면 기본 배포 주소 사용
+  return import.meta.env.VITE_GRPC_URL || 'https://api.silver-guardian.site';
+};
 
 class GRPCClient {
   private client: AnalysisServiceClientImpl;
 
   constructor() {
-    // ts-proto의 GrpcWebImpl을 사용하여 통신 설정
-    const rpc = new GrpcWebImpl(GRPC_URL, {
+    // 동적으로 결정된 URL을 주입합니다.
+    const rpc = new GrpcWebImpl(getGrpcUrl(), {
       debug: false,
     });
-    // 클라이언트 인스턴스 생성
     this.client = new AnalysisServiceClientImpl(rpc);
   }
 
-  async startAnalysis(videoUrl: string) {
-    // 요청 객체를 단순한 JSON 객체로 전달 가능
-    const request: AnalysisRequest = {
-      videoUrl: videoUrl,
-      options: undefined // 필요한 경우 옵션 추가
-    };
-
-    // Promise 기반으로 동작하므로 코드가 훨씬 깔끔해짐
-    try {
-      const response = await this.client.StartAnalysis(request);
-      return {
-        jobId: response.jobId,
-        status: response.status,
-        message: response.message,
-      };
-    } catch (err) {
-      throw err;
-    }
+  // 1. 분석 요청
+  async startAnalysis(request: AnalysisRequest) {
+    return this.client.StartAnalysis(request);
   }
 
-  streamProgress(jobId: string, onEvent: any, onEnd: any, onError: any) {
-    const stream = this.client.StreamProgress({ jobId });
-    
-    // Observable을 구독하는 형태
-    const subscription = stream.subscribe({
-      next: (response) => {
-        onEvent({
-          jobId: response.jobId,
-          type: response.type,
-          message: response.message,
-          progress: response.progress,
-          timestamp: response.timestamp,
-        });
-      },
-      error: (err) => onError(err),
-      complete: () => onEnd(),
-    });
-
-    return subscription; // 필요 시 구독 해제(unsubscribe)를 위해 반환
+  // 2. 진행 상황 스트리밍
+  streamProgress(jobId: string) {
+    return this.client.StreamProgress({ jobId });
   }
 
-  async getResult(jobId: string) {
-    try {
-      const response = await this.client.GetResult({ jobId });
-      return {
-        jobId: response.jobId,
-        videoId: response.videoId,
-        safetyScore: response.safetyScore,
-        status: response.status,
-        // 필요한 다른 필드들도 .getSomething() 없이 직접 접근 가능
-        geminiResponse: response.geminiResponse, 
-      };
-    } catch (err) {
-      throw err;
-    }
+  // 3. 결과 조회
+  async getResult(request: { jobId: string }) {
+    return this.client.GetResult(request);
+  }
+
+  // 4. 로그인
+  async loginWithGoogle(request: LoginRequest) {
+    return this.client.LoginWithGoogle(request);
+  }
+
+  // 5. 프로필 조회
+  async getUserProfile(request: GetProfileRequest) {
+    return this.client.GetUserProfile(request);
+  }
+
+  // 6. 히스토리 조회
+  async getUserHistory(request: GetHistoryRequest) {
+    return this.client.GetUserHistory(request);
   }
 }
 
-export const grpcClient = new GRPCClient();
+export const analysisClient = new GRPCClient();

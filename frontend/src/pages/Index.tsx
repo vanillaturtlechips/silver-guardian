@@ -1,114 +1,111 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { StatusBar } from "@/components/StatusBar";
-import { VideoPlayer } from "@/components/VideoPlayer";
-import { AnalysisLog } from "@/components/AnalysisLog";
-import { SettingsPanel } from "@/components/SettingsPanel";
 import { useMonitoringContext } from "@/context/MonitoringContext";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, FileText } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Search, Loader2, ShieldCheck, Youtube } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
-const Index = () => {
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [showModal, setShowModal] = useState(false);
+export default function Index() {
+  const { startAnalysis, isAnalyzing, progress } = useMonitoringContext();
+  const [url, setUrl] = useState("");
   const navigate = useNavigate();
 
-  const { isScanning, safetyScore, engineStatus, logs, videoId, startMonitoring, analysisResult } =
-    useMonitoringContext();
-
-  // 분석 완료 시 모달 표시 (10초 후 자동 닫힘)
-  useEffect(() => {
-    if (analysisResult && !isScanning && engineStatus === "active") {
-      setShowModal(true);
-      const timer = setTimeout(() => {
-        setShowModal(false);
-      }, 10000); 
-
-      return () => clearTimeout(timer);
+  const handleAnalyze = async () => {
+    if (!url) return;
+    
+    try {
+      // [해결] 이제 startAnalysis가 jobId를 리턴하므로 TS 에러가 발생하지 않습니다.
+      const result = await startAnalysis(url);
+      
+      if (result && result.jobId) {
+        // 영상 시청 페이지(/watch)로 이동하며 필요한 정보 전달
+        navigate(`/watch?url=${encodeURIComponent(url)}&jobId=${result.jobId}`);
+      }
+    } catch (error) {
+      console.error("Navigation error:", error);
     }
-  }, [analysisResult, isScanning, engineStatus]);
+  };
 
   return (
-    <div className="flex h-screen flex-col bg-background">
-      <StatusBar
-        engineStatus={engineStatus}
-        safetyScore={safetyScore}
-        onOpenSettings={() => setSettingsOpen(true)}
-      />
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* 중앙 패널: 비디오 플레이어 */}
-        <div className="flex flex-1 flex-col p-4 gap-4 relative">
-          <VideoPlayer
-            videoId={videoId}
-            isScanning={isScanning}
-            onSubmitUrl={startMonitoring}
-          />
-
-          {/* ★ 상세 페이지 이동 버튼 (분석 결과가 있을 때만 표시) */}
-          {analysisResult && !isScanning && (
-            <div className="absolute bottom-6 right-6 animate-in slide-in-from-bottom-4 fade-in duration-700">
-              <Button 
-                size="lg" 
-                className="shadow-xl gap-2 text-lg h-14 px-8 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 transition-all hover:scale-105"
-                onClick={() => navigate("/result")}
-              >
-                <FileText className="w-5 h-5" />
-                상세 결과 보기
-                <ChevronRight className="w-5 h-5 opacity-70" />
-              </Button>
-            </div>
-          )}
+    <div className="container mx-auto px-4 py-20 max-w-3xl min-h-[80vh] flex flex-col justify-center items-center space-y-8 animate-in fade-in duration-700">
+      
+      <div className="text-center space-y-4">
+        <div className="flex justify-center mb-6">
+          <div className="bg-primary/10 p-4 rounded-full ring-4 ring-primary/5">
+            <ShieldCheck className="w-16 h-16 text-primary" />
+          </div>
         </div>
-
-        {/* 우측 패널: 로그 */}
-        <AnalysisLog logs={logs} isScanning={isScanning} />
+        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent dark:from-white dark:to-slate-400">
+          Silver Guardian
+        </h1>
+        <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          AI 유튜브 영상의 <b>숨겨진 의도</b>와 <b>위험 요소</b>를 <br className="hidden md:block" />
+          분석해드립니다.
+        </p>
       </div>
 
-      <SettingsPanel open={settingsOpen} onOpenChange={setSettingsOpen} />
-
-      {/* 결과 알림 모달 */}
-      <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>분석 완료</DialogTitle>
-            <DialogDescription className="pt-2 text-base font-medium text-foreground leading-relaxed">
-              {analysisResult?.summary || "영상의 안전성 분석이 완료되었습니다."}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center space-x-2 py-4">
-            <div className={`text-sm font-semibold ${
-                safetyScore >= 80 ? "text-green-600" : 
-                safetyScore >= 50 ? "text-yellow-600" : "text-red-600"
-            }`}>
-              안전 점수: {safetyScore}점
+      <Card className="w-full shadow-xl border-muted/40 overflow-hidden">
+        <CardContent className="p-6 md:p-8 bg-card">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <div className="absolute left-3 top-3.5 text-muted-foreground">
+                <Youtube className="h-5 w-5" />
+              </div>
+              <Input 
+                placeholder="유튜브 영상 링크를 붙여넣으세요" 
+                className="pl-10 h-12 text-lg shadow-sm"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAnalyze()}
+                disabled={isAnalyzing}
+              />
             </div>
+            <Button 
+              size="lg" 
+              className="h-12 px-8 text-lg font-bold shadow-md transition-all hover:shadow-lg"
+              onClick={handleAnalyze}
+              disabled={isAnalyzing || !url}
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 분석 중...
+                </>
+              ) : (
+                <>
+                  <Search className="mr-2 h-5 w-5" /> 분석 시작
+                </>
+              )}
+            </Button>
           </div>
-          <DialogFooter className="sm:justify-between items-center gap-4">
-            <span className="text-xs text-muted-foreground text-center sm:text-left">
-              10초 후 자동으로 닫힙니다.
-            </span>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <Button variant="secondary" onClick={() => setShowModal(false)} className="flex-1 sm:flex-none">
-                닫기
-              </Button>
-              <Button onClick={() => navigate("/result")} className="flex-1 sm:flex-none">
-                자세히 보기
-              </Button>
+
+          {isAnalyzing && (
+            <div className="mt-8 space-y-3 animate-in fade-in slide-in-from-top-2">
+               <div className="flex justify-between text-sm text-primary font-semibold">
+                  <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin"/> AI 엔진 가동 중...</span>
+                  <span>{progress}%</span>
+               </div>
+               <Progress value={progress} className="h-2 bg-muted" />
             </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full text-center pt-10 opacity-80">
+         <div className="space-y-2 p-4 rounded-lg hover:bg-muted/50 transition-colors">
+            <div className="font-bold text-lg flex items-center justify-center gap-2">⚡ 초고속 분석</div>
+            <p className="text-sm text-muted-foreground">URL만 넣으면 즉시 <br/>안전도 리포트 생성</p>
+         </div>
+         <div className="space-y-2 p-4 rounded-lg hover:bg-muted/50 transition-colors">
+            <div className="font-bold text-lg flex items-center justify-center gap-2">🤖 Gemini AI</div>
+            <p className="text-sm text-muted-foreground">최신 AI 모델이 영상의 <br/>맥락과 숨겨진 의도 파악</p>
+         </div>
+         <div className="space-y-2 p-4 rounded-lg hover:bg-muted/50 transition-colors">
+            <div className="font-bold text-lg flex items-center justify-center gap-2">💬 여론 탐지</div>
+            <p className="text-sm text-muted-foreground">베스트 댓글 분석을 통해 <br/>실제 시청자 반응 확인</p>
+         </div>
+      </div>
     </div>
   );
-};
-
-export default Index;
+}

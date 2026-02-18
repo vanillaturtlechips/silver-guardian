@@ -9,9 +9,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	"github.com/your-org/silver-guardian/backend/internal/gemini"
-	"github.com/your-org/silver-guardian/backend/internal/storage"
-	"github.com/your-org/silver-guardian/backend/internal/youtube"
+	"github.com/vanillaturtlechips/silver-guardian/backend/internal/gemini"
+	"github.com/vanillaturtlechips/silver-guardian/backend/internal/storage"
+	"github.com/vanillaturtlechips/silver-guardian/backend/internal/youtube"
 )
 
 type Analyzer struct {
