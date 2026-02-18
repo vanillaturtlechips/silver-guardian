@@ -8,6 +8,7 @@ database:
   name: ${DB_NAME}
   user: ${DB_USER}
   password: ${DB_PASSWORD}
+  sslmode: ${DB_SSL_MODE}
   max_connections: 25
   max_idle_connections: 5
 
