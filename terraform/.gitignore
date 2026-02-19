@@ -1,3 +1,4 @@
 .env.aws
 terraform.tfvars
 .env
+terraform/**/*.tfstate*.backup
