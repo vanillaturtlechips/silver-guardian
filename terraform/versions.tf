@@ -1,6 +1,12 @@
 terraform {
   required_version = ">= 1.0"
 
+  backend "s3" {
+    bucket         = "silver-guardian-tfstate-terra-myong"
+    key            = "silver-guardian/terraform.tfstate"
+    region         = "ap-northeast-2"
+  }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
