@@ -1,0 +1,26 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: audio-analyzer-scaler
+  namespace: default
+spec:
+  scaleTargetRef:
+    name: audio-analyzer
+  minReplicaCount: 0  # Scale to zero
+  maxReplicaCount: 5
+  pollingInterval: 30
+  cooldownPeriod: 300  # 5분 동안 트래픽 없으면 0으로 축소
+  
+  triggers:
+  - type: cpu
+    metricType: Utilization
+    metadata:
+      value: "50"  # CPU 50% 이상 시 스케일 아웃
+  
+  # 또는 HTTP 트래픽 기반 (추후 Step Functions 연동 시)
+  # - type: prometheus
+  #   metadata:
+  #     serverAddress: http://prometheus-server.monitoring.svc.cluster.local
+  #     metricName: http_requests_total
+  #     threshold: '10'
+  #     query: sum(rate(http_requests_total{job="audio-analyzer"}[1m]))

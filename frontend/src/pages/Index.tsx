@@ -4,13 +4,17 @@ import { useMonitoringContext } from "@/context/MonitoringContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Loader2, ShieldCheck, Youtube } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, Loader2, ShieldCheck, Youtube, Upload } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import VideoUpload from "@/components/VideoUpload";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Index() {
   const { startAnalysis, isAnalyzing, progress } = useMonitoringContext();
   const [url, setUrl] = useState("");
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleAnalyze = async () => {
     if (!url) return;
@@ -26,6 +30,15 @@ export default function Index() {
     } catch (error) {
       console.error("Navigation error:", error);
     }
+  };
+
+  const handleUploadComplete = (s3Key: string, uploadId: string) => {
+    toast({
+      title: "업로드 완료!",
+      description: "곧 분석이 시작됩니다.",
+    });
+    console.log("Uploaded to S3:", s3Key, uploadId);
+    // TODO: S3 업로드 완료 후 분석 시작 로직 추가 (Epic 1.3에서 구현)
   };
 
   return (
@@ -48,47 +61,66 @@ export default function Index() {
 
       <Card className="w-full shadow-xl border-muted/40 overflow-hidden">
         <CardContent className="p-6 md:p-8 bg-card">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <div className="absolute left-3 top-3.5 text-muted-foreground">
-                <Youtube className="h-5 w-5" />
-              </div>
-              <Input 
-                placeholder="유튜브 영상 링크를 붙여넣으세요" 
-                className="pl-10 h-12 text-lg shadow-sm"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAnalyze()}
-                disabled={isAnalyzing}
-              />
-            </div>
-            <Button 
-              size="lg" 
-              className="h-12 px-8 text-lg font-bold shadow-md transition-all hover:shadow-lg"
-              onClick={handleAnalyze}
-              disabled={isAnalyzing || !url}
-            >
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 분석 중...
-                </>
-              ) : (
-                <>
-                  <Search className="mr-2 h-5 w-5" /> 분석 시작
-                </>
-              )}
-            </Button>
-          </div>
+          <Tabs defaultValue="url" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="url" className="flex items-center gap-2">
+                <Youtube className="w-4 h-4" />
+                URL 입력
+              </TabsTrigger>
+              <TabsTrigger value="upload" className="flex items-center gap-2">
+                <Upload className="w-4 h-4" />
+                파일 업로드
+              </TabsTrigger>
+            </TabsList>
 
-          {isAnalyzing && (
-            <div className="mt-8 space-y-3 animate-in fade-in slide-in-from-top-2">
-               <div className="flex justify-between text-sm text-primary font-semibold">
-                  <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin"/> AI 엔진 가동 중...</span>
-                  <span>{progress}%</span>
-               </div>
-               <Progress value={progress} className="h-2 bg-muted" />
-            </div>
-          )}
+            <TabsContent value="url" className="space-y-4">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                  <div className="absolute left-3 top-3.5 text-muted-foreground">
+                    <Youtube className="h-5 w-5" />
+                  </div>
+                  <Input 
+                    placeholder="유튜브 영상 링크를 붙여넣으세요" 
+                    className="pl-10 h-12 text-lg shadow-sm"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAnalyze()}
+                    disabled={isAnalyzing}
+                  />
+                </div>
+                <Button 
+                  size="lg" 
+                  className="h-12 px-8 text-lg font-bold shadow-md transition-all hover:shadow-lg"
+                  onClick={handleAnalyze}
+                  disabled={isAnalyzing || !url}
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 분석 중...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="mr-2 h-5 w-5" /> 분석 시작
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {isAnalyzing && (
+                <div className="mt-8 space-y-3 animate-in fade-in slide-in-from-top-2">
+                   <div className="flex justify-between text-sm text-primary font-semibold">
+                      <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin"/> AI 엔진 가동 중...</span>
+                      <span>{progress}%</span>
+                   </div>
+                   <Progress value={progress} className="h-2 bg-muted" />
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="upload">
+              <VideoUpload onUploadComplete={handleUploadComplete} userId="guest" />
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 

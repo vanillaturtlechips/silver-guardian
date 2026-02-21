@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: video-analyzer
+  namespace: default
+  labels:
+    app: video-analyzer
+    workload: ml
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: video-analyzer
+  template:
+    metadata:
+      labels:
+        app: video-analyzer
+        workload: ml
+    spec:
+      # Spot 노드에만 스케줄링
+      tolerations:
+      - key: "workload"
+        operator: "Equal"
+        value: "ml"
+        effect: "NoSchedule"
+      
+      nodeSelector:
+        workload: ml
+        nodeType: spot
+      
+      containers:
+      - name: video-analyzer
+        image: 009946608368.dkr.ecr.ap-northeast-2.amazonaws.com/video-analyzer:latest
+        ports:
+        - containerPort: 8001
+          name: http
+        env:
+        - name: AWS_REGION
+          value: "ap-northeast-2"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "1000m"
+          limits:
+            memory: "3Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: video-analyzer
+  namespace: default
+  labels:
+    app: video-analyzer
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8001
+    targetPort: 8001
+    protocol: TCP
+    name: http
+  selector:
+    app: video-analyzer

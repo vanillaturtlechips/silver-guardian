@@ -1,0 +1,192 @@
+{
+  "Comment": "Silver Guardian ML Analysis Orchestration",
+  "StartAt": "ExtractS3Info",
+  "States": {
+    "ExtractS3Info": {
+      "Type": "Pass",
+      "Parameters": {
+        "bucket.$": "$.detail.bucket.name",
+        "key.$": "$.detail.object.key",
+        "size.$": "$.detail.object.size"
+      },
+      "Next": "ParallelAnalysis"
+    },
+    "ParallelAnalysis": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "AudioAnalysis",
+          "States": {
+            "AudioAnalysis": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::http:invoke",
+              "Parameters": {
+                "ApiEndpoint": "http://audio-analyzer.default.svc.cluster.local:8000/analyze",
+                "Method": "POST",
+                "RequestBody": {
+                  "s3_bucket.$": "$.bucket",
+                  "s3_key.$": "$.key"
+                },
+                "Headers": {
+                  "Content-Type": "application/json"
+                }
+              },
+              "ResultPath": "$.audioResult",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 2
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.audioError",
+                  "Next": "AudioFallback"
+                }
+              ],
+              "End": true
+            },
+            "AudioFallback": {
+              "Type": "Pass",
+              "Result": {
+                "deepfake_probability": 0.5,
+                "status": "error"
+              },
+              "ResultPath": "$.audioResult",
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "VideoAnalysis",
+          "States": {
+            "VideoAnalysis": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::http:invoke",
+              "Parameters": {
+                "ApiEndpoint": "http://video-analyzer.default.svc.cluster.local:8001/analyze",
+                "Method": "POST",
+                "RequestBody": {
+                  "s3_bucket.$": "$.bucket",
+                  "s3_key.$": "$.key",
+                  "sample_rate": 30
+                },
+                "Headers": {
+                  "Content-Type": "application/json"
+                }
+              },
+              "ResultPath": "$.videoResult",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 2
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.videoError",
+                  "Next": "VideoFallback"
+                }
+              ],
+              "End": true
+            },
+            "VideoFallback": {
+              "Type": "Pass",
+              "Result": {
+                "manipulation_probability": 0.5,
+                "status": "error"
+              },
+              "ResultPath": "$.videoResult",
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "TranscribeBedrockAnalysis",
+          "States": {
+            "TranscribeBedrockAnalysis": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "silver-guardian-transcribe-bedrock-analyzer",
+                "Payload": {
+                  "bucket.$": "$.bucket",
+                  "key.$": "$.key"
+                }
+              },
+              "ResultSelector": {
+                "scam_probability.$": "$.Payload.scam_probability",
+                "reasoning.$": "$.Payload.reasoning",
+                "status.$": "$.Payload.status"
+              },
+              "ResultPath": "$.bedrockResult",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.bedrockError",
+                  "Next": "BedrockFallback"
+                }
+              ],
+              "End": true
+            },
+            "BedrockFallback": {
+              "Type": "Pass",
+              "Result": {
+                "scam_probability": 0.5,
+                "reasoning": "분석 실패",
+                "status": "error"
+              },
+              "ResultPath": "$.bedrockResult",
+              "End": true
+            }
+          }
+        }
+      ],
+      "ResultPath": "$.analysisResults",
+      "Next": "AggregateResults"
+    },
+    "AggregateResults": {
+      "Type": "Pass",
+      "Parameters": {
+        "bucket.$": "$.bucket",
+        "key.$": "$.key",
+        "audio_score.$": "$.analysisResults[0].audioResult.deepfake_probability",
+        "video_score.$": "$.analysisResults[1].videoResult.manipulation_probability",
+        "context_score.$": "$.analysisResults[2].bedrockResult.scam_probability",
+        "timestamp.$": "$$.State.EnteredTime"
+      },
+      "ResultPath": "$.finalResult",
+      "Next": "SaveToDatabase"
+    },
+    "SaveToDatabase": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "silver-guardian-save-results",
+        "Payload": {
+          "bucket.$": "$.finalResult.bucket",
+          "key.$": "$.finalResult.key",
+          "audio_score.$": "$.finalResult.audio_score",
+          "video_score.$": "$.finalResult.video_score",
+          "context_score.$": "$.finalResult.context_score",
+          "timestamp.$": "$.finalResult.timestamp"
+        }
+      },
+      "End": true
+    }
+  }
+}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
@@ -13,6 +14,7 @@ import (
 	"github.com/vanillaturtlechips/silver-guardian/backend/internal/config"
 	"github.com/vanillaturtlechips/silver-guardian/backend/internal/gemini"
 	grpcHandler "github.com/vanillaturtlechips/silver-guardian/backend/internal/grpc"
+	"github.com/vanillaturtlechips/silver-guardian/backend/internal/s3"
 	"github.com/vanillaturtlechips/silver-guardian/backend/internal/storage"
 	"github.com/vanillaturtlechips/silver-guardian/backend/internal/worker"
 	"github.com/vanillaturtlechips/silver-guardian/backend/internal/youtube"
@@ -86,7 +88,22 @@ func New(configPath, env string) (*App, error) {
 	// 이제 타입이 정확히 맞습니다 (*youtube.Client, *gemini.Client, *storage.PostgresStore, *redis.Client)
 	analyzer := worker.NewAnalyzer(ytClient, geminiClient, store, rdb)
 
-	// 6. gRPC 서버 설정
+	// 6. S3 클라이언트 초기화
+	awsRegion := os.Getenv("AWS_REGION")
+	if awsRegion == "" {
+		awsRegion = "ap-northeast-2"
+	}
+	s3BucketName := os.Getenv("S3_BUCKET_NAME")
+	if s3BucketName == "" {
+		s3BucketName = "silver-guardian-uploads"
+	}
+
+	s3Client, err := s3.NewClient(context.Background(), s3BucketName, awsRegion)
+	if err != nil {
+		return nil, fmt.Errorf("s3 client init failed: %w", err)
+	}
+
+	// 7. gRPC 서버 설정
 	port := cfg.Server.GRPCPort
 	if port == 0 {
 		port = 50051 // 기본값
@@ -98,7 +115,7 @@ func New(configPath, env string) (*App, error) {
 	}
 
 	grpcServer := grpc.NewServer()
-	analysisHandler := grpcHandler.NewAnalysisServer(store, analyzer)
+	analysisHandler := grpcHandler.NewAnalysisServer(store, analyzer, s3Client)
 	pb.RegisterAnalysisServiceServer(grpcServer, analysisHandler)
 	reflection.Register(grpcServer)
 

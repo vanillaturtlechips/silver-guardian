@@ -22,6 +22,12 @@ service AnalysisService {
   rpc LoginWithGoogle (LoginRequest) returns (LoginResponse);
   rpc GetUserProfile (GetProfileRequest) returns (UserProfileResponse);
   rpc GetUserHistory (GetHistoryRequest) returns (HistoryResponse);
+
+  // S3 Presigned URL 발급 ---
+  rpc GetUploadURL (UploadURLRequest) returns (UploadURLResponse);
+
+  // 분석 결과 조회 (video_id 기반) ---
+  rpc GetAnalysisResult (AnalysisResultRequest) returns (AnalysisResultResponse);
 }
 
 // --- 메시지 정의 ---
@@ -149,4 +155,37 @@ message HistoryItem {
   string analyzed_at = 4;
   int32 safety_score = 5;
   string job_id = 6;
+}
+
+// --- [NEW] S3 Upload Messages ---
+
+message UploadURLRequest {
+  string filename = 1;       // 업로드할 파일명 (예: "video.mp4")
+  string content_type = 2;   // MIME 타입 (예: "video/mp4")
+  int64 file_size = 3;       // 파일 크기 (바이트)
+  string user_id = 4;        // 업로드하는 사용자 ID
+}
+
+message UploadURLResponse {
+  string upload_url = 1;     // S3 Presigned URL
+  string s3_key = 2;         // S3 객체 키 (경로)
+  int32 expires_in = 3;      // URL 만료 시간 (초)
+  string upload_id = 4;      // 추적용 고유 ID
+}
+
+// --- [NEW] Analysis Result Messages ---
+
+message AnalysisResultRequest {
+  string video_id = 1;       // 조회할 video_id
+}
+
+message AnalysisResultResponse {
+  string video_id = 1;
+  float audio_score = 2;     // 0.0-1.0
+  float video_score = 3;     // 0.0-1.0
+  float context_score = 4;   // 0.0-1.0
+  int32 final_score = 5;     // 0-100
+  string status = 6;         // processing, completed, failed
+  string created_at = 7;
+  string updated_at = 8;
 }
