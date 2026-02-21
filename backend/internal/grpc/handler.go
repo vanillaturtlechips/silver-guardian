@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/vanillaturtlechips/silver-guardian/backend/internal/auth" // [NEW] Auth 패키지 임포트
+	"github.com/vanillaturtlechips/silver-guardian/backend/internal/s3"
 	"github.com/vanillaturtlechips/silver-guardian/backend/internal/storage"
 	"github.com/vanillaturtlechips/silver-guardian/backend/internal/worker"
 	"github.com/vanillaturtlechips/silver-guardian/backend/internal/youtube"
@@ -21,13 +22,15 @@ type AnalysisServer struct {
 	pb.UnimplementedAnalysisServiceServer
 	store    *storage.PostgresStore // PostgresStorage 구조체 이름 확인 필요 (보통 PostgresStore or Storage)
 	analyzer *worker.Analyzer
+	s3Client *s3.Client
 }
 
 // 생성자
-func NewAnalysisServer(store *storage.PostgresStore, analyzer *worker.Analyzer) *AnalysisServer {
+func NewAnalysisServer(store *storage.PostgresStore, analyzer *worker.Analyzer, s3Client *s3.Client) *AnalysisServer {
 	return &AnalysisServer{
 		store:    store,
 		analyzer: analyzer,
+		s3Client: s3Client,
 	}
 }
 
@@ -344,4 +347,67 @@ func (s *AnalysisServer) GetUserHistory(ctx context.Context, req *pb.GetHistoryR
 	}
 
 	return &pb.HistoryResponse{Items: pbItems}, nil
+}
+
+// ---------------------------------------------------------
+// [NEW] 분석 결과 조회 (video_id 기반)
+// ---------------------------------------------------------
+
+// GetAnalysisResult: video_id로 분석 결과 조회
+func (s *AnalysisServer) GetAnalysisResult(ctx context.Context, req *pb.AnalysisResultRequest) (*pb.AnalysisResultResponse, error) {
+	videoID := req.VideoId
+	if videoID == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "video_id is required")
+	}
+
+	// analysis_results 테이블에서 조회
+	result, err := s.store.GetAnalysisResultByVideoID(videoID)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "analysis result not found")
+	}
+
+	return &pb.AnalysisResultResponse{
+		VideoId:      result.VideoID,
+		AudioScore:   float32(result.AudioScore),
+		VideoScore:   float32(result.VideoScore),
+		ContextScore: float32(result.ContextScore),
+		FinalScore:   int32(result.FinalScore),
+		Status:       result.Status,
+		CreatedAt:    result.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:    result.UpdatedAt.Format(time.RFC3339),
+	}, nil
+}
+
+// ---------------------------------------------------------
+// [NEW] S3 Presigned URL 발급
+// ---------------------------------------------------------
+
+// GetUploadURL: S3 Presigned URL 발급
+func (s *AnalysisServer) GetUploadURL(ctx context.Context, req *pb.UploadURLRequest) (*pb.UploadURLResponse, error) {
+	if req.Filename == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "filename is required")
+	}
+	if req.ContentType == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "content_type is required")
+	}
+
+	presignReq := s3.PresignedURLRequest{
+		Filename:    req.Filename,
+		ContentType: req.ContentType,
+		FileSize:    req.FileSize,
+		UserID:      req.UserId,
+	}
+
+	presignResp, err := s.s3Client.GeneratePresignedURL(ctx, presignReq)
+	if err != nil {
+		log.Printf("Failed to generate presigned URL: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to generate upload URL")
+	}
+
+	return &pb.UploadURLResponse{
+		UploadUrl: presignResp.UploadURL,
+		S3Key:     presignResp.S3Key,
+		ExpiresIn: presignResp.ExpiresIn,
+		UploadId:  presignResp.UploadID,
+	}, nil
 }

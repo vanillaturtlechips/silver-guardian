@@ -2,20 +2,32 @@ syntax = "proto3";
 
 package analysis;
 
-// 프론트엔드용이라 go_package 옵션은 무시되지만, 포맷 유지를 위해 둠
 option go_package = "github.com/vanillaturtlechips/silver-guardian/backend/proto";
 
+// 서비스 정의
 service AnalysisService {
+  // 분석 시작
   rpc StartAnalysis(AnalysisRequest) returns (AnalysisResponse);
+  
+  // 실시간 진행 상황 스트리밍
   rpc StreamProgress(ProgressRequest) returns (stream ProgressEvent);
+  
+  // 결과 조회
   rpc GetResult(ResultRequest) returns (AnalysisResult);
+  
+  // 작업 취소 (선택 사항)
   rpc CancelAnalysis(CancelRequest) returns (CancelResponse);
 
-  // [NEW] Auth & User RPCs
+  // Auth & User 기능을 위한 RPC 추가 ---
   rpc LoginWithGoogle (LoginRequest) returns (LoginResponse);
   rpc GetUserProfile (GetProfileRequest) returns (UserProfileResponse);
   rpc GetUserHistory (GetHistoryRequest) returns (HistoryResponse);
+
+  // S3 Presigned URL 발급 ---
+  rpc GetUploadURL (UploadURLRequest) returns (UploadURLResponse);
 }
+
+// --- 메시지 정의 ---
 
 message AnalysisRequest {
   string video_url = 1;
@@ -24,7 +36,7 @@ message AnalysisRequest {
 }
 
 message AnalysisOptions {
-  int32 sensitivity = 1;
+  int32 sensitivity = 1;  // 0=Low, 1=Medium, 2=High
   bool analyze_comments = 2;
   int32 top_comments_count = 3;
 }
@@ -41,7 +53,7 @@ message ProgressRequest {
 
 message ProgressEvent {
   string job_id = 1;
-  string type = 2;
+  string type = 2;  // "log", "progress", "complete", "error"
   string message = 3;
   int32 progress = 4;
   string timestamp = 5;
@@ -93,16 +105,16 @@ message CancelResponse {
 // --- [NEW] Auth & User Messages ---
 
 message LoginRequest {
-  string id_token = 1;
+  string id_token = 1; // 프론트(Google)에서 받은 토큰
 }
 
 message LoginResponse {
-  string access_token = 1;
+  string access_token = 1; // 서버가 발급한 JWT
   User user = 2;
 }
 
 message GetProfileRequest {
-  string user_id = 1;
+  string user_id = 1; // JWT에서 추출하거나 프론트가 보낸 ID
 }
 
 message UserProfileResponse {
@@ -128,7 +140,7 @@ message User {
 }
 
 message Subscription {
-  string plan_type = 1;
+  string plan_type = 1; // 'free', 'pro'
   string start_date = 2;
   string end_date = 3;
 }
@@ -138,6 +150,22 @@ message HistoryItem {
   string video_title = 2;
   string thumbnail_url = 3;
   string analyzed_at = 4;
-  string job_id = 5;    
-  int32 safety_score = 6;
+  int32 safety_score = 5;
+  string job_id = 6;
+}
+
+// --- [NEW] S3 Upload Messages ---
+
+message UploadURLRequest {
+  string filename = 1;       // 업로드할 파일명 (예: "video.mp4")
+  string content_type = 2;   // MIME 타입 (예: "video/mp4")
+  int64 file_size = 3;       // 파일 크기 (바이트)
+  string user_id = 4;        // 업로드하는 사용자 ID
+}
+
+message UploadURLResponse {
+  string upload_url = 1;     // S3 Presigned URL
+  string s3_key = 2;         // S3 객체 키 (경로)
+  int32 expires_in = 3;      // URL 만료 시간 (초)
+  string upload_id = 4;      // 추적용 고유 ID
 }

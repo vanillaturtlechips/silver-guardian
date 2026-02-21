@@ -331,3 +331,50 @@ func (s *PostgresStore) GetHistory(userID int64, limit, offset int) ([]*Analysis
     }
     return history, nil
 }
+
+
+// AnalysisResultDB represents analysis_results table
+type AnalysisResultDB struct {
+	ID           int
+	VideoID      string
+	S3Bucket     string
+	S3Key        string
+	AudioScore   float64
+	VideoScore   float64
+	ContextScore float64
+	FinalScore   int
+	Status       string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+// GetAnalysisResultByVideoID retrieves analysis result by video_id
+func (s *PostgresStore) GetAnalysisResultByVideoID(videoID string) (*AnalysisResultDB, error) {
+	query := `
+		SELECT id, video_id, s3_bucket, s3_key, audio_score, video_score, 
+		       context_score, final_score, status, created_at, updated_at
+		FROM analysis_results
+		WHERE video_id = $1
+	`
+	
+	result := &AnalysisResultDB{}
+	err := s.db.QueryRow(query, videoID).Scan(
+		&result.ID,
+		&result.VideoID,
+		&result.S3Bucket,
+		&result.S3Key,
+		&result.AudioScore,
+		&result.VideoScore,
+		&result.ContextScore,
+		&result.FinalScore,
+		&result.Status,
+		&result.CreatedAt,
+		&result.UpdatedAt,
+	)
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return result, nil
+}

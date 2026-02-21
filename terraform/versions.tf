@@ -24,5 +24,9 @@ terraform {
       source  = "hashicorp/helm"
       version = "2.12.1" # [중요] 버전을 딱 고정했습니다.
     }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.0"
+    }
   }
 }

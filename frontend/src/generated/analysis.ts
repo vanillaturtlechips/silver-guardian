@@ -20,6 +20,7 @@ export interface AnalysisRequest {
 }
 
 export interface AnalysisOptions {
+  /** 0=Low, 1=Medium, 2=High */
   sensitivity: number;
   analyzeComments: boolean;
   topCommentsCount: number;
@@ -37,6 +38,7 @@ export interface ProgressRequest {
 
 export interface ProgressEvent {
   jobId: string;
+  /** "log", "progress", "complete", "error" */
   type: string;
   message: string;
   progress: number;
@@ -87,15 +89,18 @@ export interface CancelResponse {
 }
 
 export interface LoginRequest {
+  /** 프론트(Google)에서 받은 토큰 */
   idToken: string;
 }
 
 export interface LoginResponse {
+  /** 서버가 발급한 JWT */
   accessToken: string;
   user: User | undefined;
 }
 
 export interface GetProfileRequest {
+  /** JWT에서 추출하거나 프론트가 보낸 ID */
   userId: string;
 }
 
@@ -122,6 +127,7 @@ export interface User {
 }
 
 export interface Subscription {
+  /** 'free', 'pro' */
   planType: string;
   startDate: string;
   endDate: string;
@@ -134,6 +140,28 @@ export interface HistoryItem {
   analyzedAt: string;
   safetyScore: number;
   jobId: string;
+}
+
+export interface UploadURLRequest {
+  /** 업로드할 파일명 (예: "video.mp4") */
+  filename: string;
+  /** MIME 타입 (예: "video/mp4") */
+  contentType: string;
+  /** 파일 크기 (바이트) */
+  fileSize: number;
+  /** 업로드하는 사용자 ID */
+  userId: string;
+}
+
+export interface UploadURLResponse {
+  /** S3 Presigned URL */
+  uploadUrl: string;
+  /** S3 객체 키 (경로) */
+  s3Key: string;
+  /** URL 만료 시간 (초) */
+  expiresIn: number;
+  /** 추적용 고유 ID */
+  uploadId: string;
 }
 
 function createBaseAnalysisRequest(): AnalysisRequest {
@@ -2021,12 +2049,24 @@ function createBaseHistoryItem(): HistoryItem {
 
 export const HistoryItem: MessageFns<HistoryItem> = {
   encode(message: HistoryItem, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.videoId !== "") { writer.uint32(10).string(message.videoId); }
-    if (message.videoTitle !== "") { writer.uint32(18).string(message.videoTitle); }
-    if (message.thumbnailUrl !== "") { writer.uint32(26).string(message.thumbnailUrl); }
-    if (message.analyzedAt !== "") { writer.uint32(34).string(message.analyzedAt); }
-    if (message.safetyScore !== 0) { writer.uint32(40).int32(message.safetyScore); }
-    if (message.jobId !== "") { writer.uint32(50).string(message.jobId); }
+    if (message.videoId !== "") {
+      writer.uint32(10).string(message.videoId);
+    }
+    if (message.videoTitle !== "") {
+      writer.uint32(18).string(message.videoTitle);
+    }
+    if (message.thumbnailUrl !== "") {
+      writer.uint32(26).string(message.thumbnailUrl);
+    }
+    if (message.analyzedAt !== "") {
+      writer.uint32(34).string(message.analyzedAt);
+    }
+    if (message.safetyScore !== 0) {
+      writer.uint32(40).int32(message.safetyScore);
+    }
+    if (message.jobId !== "") {
+      writer.uint32(50).string(message.jobId);
+    }
     return writer;
   },
 
@@ -2037,14 +2077,58 @@ export const HistoryItem: MessageFns<HistoryItem> = {
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
-        case 1: { if (tag !== 10) break; message.videoId = reader.string(); continue; }
-        case 2: { if (tag !== 18) break; message.videoTitle = reader.string(); continue; }
-        case 3: { if (tag !== 26) break; message.thumbnailUrl = reader.string(); continue; }
-        case 4: { if (tag !== 34) break; message.analyzedAt = reader.string(); continue; }
-        case 5: { if (tag !== 40) break; message.safetyScore = reader.int32(); continue; }
-        case 6: { if (tag !== 50) break; message.jobId = reader.string(); continue; }
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.videoId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.videoTitle = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.thumbnailUrl = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.analyzedAt = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.safetyScore = reader.int32();
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.jobId = reader.string();
+          continue;
+        }
       }
-      if ((tag & 7) === 4 || tag === 0) break;
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
       reader.skip(tag & 7);
     }
     return message;
@@ -2052,23 +2136,59 @@ export const HistoryItem: MessageFns<HistoryItem> = {
 
   fromJSON(object: any): HistoryItem {
     return {
-      videoId: isSet(object.videoId) ? globalThis.String(object.videoId) : isSet(object.video_id) ? globalThis.String(object.video_id) : "",
-      videoTitle: isSet(object.videoTitle) ? globalThis.String(object.videoTitle) : isSet(object.video_title) ? globalThis.String(object.video_title) : "",
-      thumbnailUrl: isSet(object.thumbnailUrl) ? globalThis.String(object.thumbnailUrl) : isSet(object.thumbnail_url) ? globalThis.String(object.thumbnail_url) : "",
-      analyzedAt: isSet(object.analyzedAt) ? globalThis.String(object.analyzedAt) : isSet(object.analyzed_at) ? globalThis.String(object.analyzed_at) : "",
-      safetyScore: isSet(object.safetyScore) ? globalThis.Number(object.safetyScore) : isSet(object.safety_score) ? globalThis.Number(object.safety_score) : 0,
-      jobId: isSet(object.jobId) ? globalThis.String(object.jobId) : isSet(object.job_id) ? globalThis.String(object.job_id) : "",
+      videoId: isSet(object.videoId)
+        ? globalThis.String(object.videoId)
+        : isSet(object.video_id)
+        ? globalThis.String(object.video_id)
+        : "",
+      videoTitle: isSet(object.videoTitle)
+        ? globalThis.String(object.videoTitle)
+        : isSet(object.video_title)
+        ? globalThis.String(object.video_title)
+        : "",
+      thumbnailUrl: isSet(object.thumbnailUrl)
+        ? globalThis.String(object.thumbnailUrl)
+        : isSet(object.thumbnail_url)
+        ? globalThis.String(object.thumbnail_url)
+        : "",
+      analyzedAt: isSet(object.analyzedAt)
+        ? globalThis.String(object.analyzedAt)
+        : isSet(object.analyzed_at)
+        ? globalThis.String(object.analyzed_at)
+        : "",
+      safetyScore: isSet(object.safetyScore)
+        ? globalThis.Number(object.safetyScore)
+        : isSet(object.safety_score)
+        ? globalThis.Number(object.safety_score)
+        : 0,
+      jobId: isSet(object.jobId)
+        ? globalThis.String(object.jobId)
+        : isSet(object.job_id)
+        ? globalThis.String(object.job_id)
+        : "",
     };
   },
 
   toJSON(message: HistoryItem): unknown {
     const obj: any = {};
-    if (message.videoId !== "") { obj.videoId = message.videoId; }
-    if (message.videoTitle !== "") { obj.videoTitle = message.videoTitle; }
-    if (message.thumbnailUrl !== "") { obj.thumbnailUrl = message.thumbnailUrl; }
-    if (message.analyzedAt !== "") { obj.analyzedAt = message.analyzedAt; }
-    if (message.safetyScore !== 0) { obj.safetyScore = Math.round(message.safetyScore); }
-    if (message.jobId !== "") { obj.jobId = message.jobId; }
+    if (message.videoId !== "") {
+      obj.videoId = message.videoId;
+    }
+    if (message.videoTitle !== "") {
+      obj.videoTitle = message.videoTitle;
+    }
+    if (message.thumbnailUrl !== "") {
+      obj.thumbnailUrl = message.thumbnailUrl;
+    }
+    if (message.analyzedAt !== "") {
+      obj.analyzedAt = message.analyzedAt;
+    }
+    if (message.safetyScore !== 0) {
+      obj.safetyScore = Math.round(message.safetyScore);
+    }
+    if (message.jobId !== "") {
+      obj.jobId = message.jobId;
+    }
     return obj;
   },
 
@@ -2087,15 +2207,266 @@ export const HistoryItem: MessageFns<HistoryItem> = {
   },
 };
 
+function createBaseUploadURLRequest(): UploadURLRequest {
+  return { filename: "", contentType: "", fileSize: 0, userId: "" };
+}
+
+export const UploadURLRequest: MessageFns<UploadURLRequest> = {
+  encode(message: UploadURLRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.filename !== "") {
+      writer.uint32(10).string(message.filename);
+    }
+    if (message.contentType !== "") {
+      writer.uint32(18).string(message.contentType);
+    }
+    if (message.fileSize !== 0) {
+      writer.uint32(24).int64(message.fileSize);
+    }
+    if (message.userId !== "") {
+      writer.uint32(34).string(message.userId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UploadURLRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUploadURLRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.filename = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.contentType = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.fileSize = longToNumber(reader.int64());
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.userId = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UploadURLRequest {
+    return {
+      filename: isSet(object.filename) ? globalThis.String(object.filename) : "",
+      contentType: isSet(object.contentType)
+        ? globalThis.String(object.contentType)
+        : isSet(object.content_type)
+        ? globalThis.String(object.content_type)
+        : "",
+      fileSize: isSet(object.fileSize)
+        ? globalThis.Number(object.fileSize)
+        : isSet(object.file_size)
+        ? globalThis.Number(object.file_size)
+        : 0,
+      userId: isSet(object.userId)
+        ? globalThis.String(object.userId)
+        : isSet(object.user_id)
+        ? globalThis.String(object.user_id)
+        : "",
+    };
+  },
+
+  toJSON(message: UploadURLRequest): unknown {
+    const obj: any = {};
+    if (message.filename !== "") {
+      obj.filename = message.filename;
+    }
+    if (message.contentType !== "") {
+      obj.contentType = message.contentType;
+    }
+    if (message.fileSize !== 0) {
+      obj.fileSize = Math.round(message.fileSize);
+    }
+    if (message.userId !== "") {
+      obj.userId = message.userId;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UploadURLRequest>, I>>(base?: I): UploadURLRequest {
+    return UploadURLRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<UploadURLRequest>, I>>(object: I): UploadURLRequest {
+    const message = createBaseUploadURLRequest();
+    message.filename = object.filename ?? "";
+    message.contentType = object.contentType ?? "";
+    message.fileSize = object.fileSize ?? 0;
+    message.userId = object.userId ?? "";
+    return message;
+  },
+};
+
+function createBaseUploadURLResponse(): UploadURLResponse {
+  return { uploadUrl: "", s3Key: "", expiresIn: 0, uploadId: "" };
+}
+
+export const UploadURLResponse: MessageFns<UploadURLResponse> = {
+  encode(message: UploadURLResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.uploadUrl !== "") {
+      writer.uint32(10).string(message.uploadUrl);
+    }
+    if (message.s3Key !== "") {
+      writer.uint32(18).string(message.s3Key);
+    }
+    if (message.expiresIn !== 0) {
+      writer.uint32(24).int32(message.expiresIn);
+    }
+    if (message.uploadId !== "") {
+      writer.uint32(34).string(message.uploadId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): UploadURLResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUploadURLResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.uploadUrl = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.s3Key = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.expiresIn = reader.int32();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.uploadId = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UploadURLResponse {
+    return {
+      uploadUrl: isSet(object.uploadUrl)
+        ? globalThis.String(object.uploadUrl)
+        : isSet(object.upload_url)
+        ? globalThis.String(object.upload_url)
+        : "",
+      s3Key: isSet(object.s3Key)
+        ? globalThis.String(object.s3Key)
+        : isSet(object.s3_key)
+        ? globalThis.String(object.s3_key)
+        : "",
+      expiresIn: isSet(object.expiresIn)
+        ? globalThis.Number(object.expiresIn)
+        : isSet(object.expires_in)
+        ? globalThis.Number(object.expires_in)
+        : 0,
+      uploadId: isSet(object.uploadId)
+        ? globalThis.String(object.uploadId)
+        : isSet(object.upload_id)
+        ? globalThis.String(object.upload_id)
+        : "",
+    };
+  },
+
+  toJSON(message: UploadURLResponse): unknown {
+    const obj: any = {};
+    if (message.uploadUrl !== "") {
+      obj.uploadUrl = message.uploadUrl;
+    }
+    if (message.s3Key !== "") {
+      obj.s3Key = message.s3Key;
+    }
+    if (message.expiresIn !== 0) {
+      obj.expiresIn = Math.round(message.expiresIn);
+    }
+    if (message.uploadId !== "") {
+      obj.uploadId = message.uploadId;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UploadURLResponse>, I>>(base?: I): UploadURLResponse {
+    return UploadURLResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<UploadURLResponse>, I>>(object: I): UploadURLResponse {
+    const message = createBaseUploadURLResponse();
+    message.uploadUrl = object.uploadUrl ?? "";
+    message.s3Key = object.s3Key ?? "";
+    message.expiresIn = object.expiresIn ?? 0;
+    message.uploadId = object.uploadId ?? "";
+    return message;
+  },
+};
+
+/** 서비스 정의 */
 export interface AnalysisService {
+  /** 분석 시작 */
   StartAnalysis(request: DeepPartial<AnalysisRequest>, metadata?: grpc.Metadata): Promise<AnalysisResponse>;
+  /** 실시간 진행 상황 스트리밍 */
   StreamProgress(request: DeepPartial<ProgressRequest>, metadata?: grpc.Metadata): Observable<ProgressEvent>;
+  /** 결과 조회 */
   GetResult(request: DeepPartial<ResultRequest>, metadata?: grpc.Metadata): Promise<AnalysisResult>;
+  /** 작업 취소 (선택 사항) */
   CancelAnalysis(request: DeepPartial<CancelRequest>, metadata?: grpc.Metadata): Promise<CancelResponse>;
-  /** [NEW] Auth & User RPCs */
+  /** Auth & User 기능을 위한 RPC 추가 --- */
   LoginWithGoogle(request: DeepPartial<LoginRequest>, metadata?: grpc.Metadata): Promise<LoginResponse>;
   GetUserProfile(request: DeepPartial<GetProfileRequest>, metadata?: grpc.Metadata): Promise<UserProfileResponse>;
   GetUserHistory(request: DeepPartial<GetHistoryRequest>, metadata?: grpc.Metadata): Promise<HistoryResponse>;
+  /** S3 Presigned URL 발급 --- */
+  GetUploadURL(request: DeepPartial<UploadURLRequest>, metadata?: grpc.Metadata): Promise<UploadURLResponse>;
 }
 
 export class AnalysisServiceClientImpl implements AnalysisService {
@@ -2110,6 +2481,7 @@ export class AnalysisServiceClientImpl implements AnalysisService {
     this.LoginWithGoogle = this.LoginWithGoogle.bind(this);
     this.GetUserProfile = this.GetUserProfile.bind(this);
     this.GetUserHistory = this.GetUserHistory.bind(this);
+    this.GetUploadURL = this.GetUploadURL.bind(this);
   }
 
   StartAnalysis(request: DeepPartial<AnalysisRequest>, metadata?: grpc.Metadata): Promise<AnalysisResponse> {
@@ -2138,6 +2510,10 @@ export class AnalysisServiceClientImpl implements AnalysisService {
 
   GetUserHistory(request: DeepPartial<GetHistoryRequest>, metadata?: grpc.Metadata): Promise<HistoryResponse> {
     return this.rpc.unary(AnalysisServiceGetUserHistoryDesc, GetHistoryRequest.fromPartial(request), metadata);
+  }
+
+  GetUploadURL(request: DeepPartial<UploadURLRequest>, metadata?: grpc.Metadata): Promise<UploadURLResponse> {
+    return this.rpc.unary(AnalysisServiceGetUploadURLDesc, UploadURLRequest.fromPartial(request), metadata);
   }
 }
 
@@ -2294,6 +2670,29 @@ export const AnalysisServiceGetUserHistoryDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = HistoryResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const AnalysisServiceGetUploadURLDesc: UnaryMethodDefinitionish = {
+  methodName: "GetUploadURL",
+  service: AnalysisServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return UploadURLRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = UploadURLResponse.decode(data);
       return {
         ...value,
         toObject() {

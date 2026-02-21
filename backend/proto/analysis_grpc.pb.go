@@ -19,13 +19,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AnalysisService_StartAnalysis_FullMethodName   = "/analysis.AnalysisService/StartAnalysis"
-	AnalysisService_StreamProgress_FullMethodName  = "/analysis.AnalysisService/StreamProgress"
-	AnalysisService_GetResult_FullMethodName       = "/analysis.AnalysisService/GetResult"
-	AnalysisService_CancelAnalysis_FullMethodName  = "/analysis.AnalysisService/CancelAnalysis"
-	AnalysisService_LoginWithGoogle_FullMethodName = "/analysis.AnalysisService/LoginWithGoogle"
-	AnalysisService_GetUserProfile_FullMethodName  = "/analysis.AnalysisService/GetUserProfile"
-	AnalysisService_GetUserHistory_FullMethodName  = "/analysis.AnalysisService/GetUserHistory"
+	AnalysisService_StartAnalysis_FullMethodName     = "/analysis.AnalysisService/StartAnalysis"
+	AnalysisService_StreamProgress_FullMethodName    = "/analysis.AnalysisService/StreamProgress"
+	AnalysisService_GetResult_FullMethodName         = "/analysis.AnalysisService/GetResult"
+	AnalysisService_CancelAnalysis_FullMethodName    = "/analysis.AnalysisService/CancelAnalysis"
+	AnalysisService_LoginWithGoogle_FullMethodName   = "/analysis.AnalysisService/LoginWithGoogle"
+	AnalysisService_GetUserProfile_FullMethodName    = "/analysis.AnalysisService/GetUserProfile"
+	AnalysisService_GetUserHistory_FullMethodName    = "/analysis.AnalysisService/GetUserHistory"
+	AnalysisService_GetUploadURL_FullMethodName      = "/analysis.AnalysisService/GetUploadURL"
+	AnalysisService_GetAnalysisResult_FullMethodName = "/analysis.AnalysisService/GetAnalysisResult"
 )
 
 // AnalysisServiceClient is the client API for AnalysisService service.
@@ -46,6 +48,10 @@ type AnalysisServiceClient interface {
 	LoginWithGoogle(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 	GetUserProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*UserProfileResponse, error)
 	GetUserHistory(ctx context.Context, in *GetHistoryRequest, opts ...grpc.CallOption) (*HistoryResponse, error)
+	// S3 Presigned URL 발급 ---
+	GetUploadURL(ctx context.Context, in *UploadURLRequest, opts ...grpc.CallOption) (*UploadURLResponse, error)
+	// 분석 결과 조회 (video_id 기반) ---
+	GetAnalysisResult(ctx context.Context, in *AnalysisResultRequest, opts ...grpc.CallOption) (*AnalysisResultResponse, error)
 }
 
 type analysisServiceClient struct {
@@ -135,6 +141,26 @@ func (c *analysisServiceClient) GetUserHistory(ctx context.Context, in *GetHisto
 	return out, nil
 }
 
+func (c *analysisServiceClient) GetUploadURL(ctx context.Context, in *UploadURLRequest, opts ...grpc.CallOption) (*UploadURLResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UploadURLResponse)
+	err := c.cc.Invoke(ctx, AnalysisService_GetUploadURL_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *analysisServiceClient) GetAnalysisResult(ctx context.Context, in *AnalysisResultRequest, opts ...grpc.CallOption) (*AnalysisResultResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AnalysisResultResponse)
+	err := c.cc.Invoke(ctx, AnalysisService_GetAnalysisResult_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AnalysisServiceServer is the server API for AnalysisService service.
 // All implementations must embed UnimplementedAnalysisServiceServer
 // for forward compatibility.
@@ -153,6 +179,10 @@ type AnalysisServiceServer interface {
 	LoginWithGoogle(context.Context, *LoginRequest) (*LoginResponse, error)
 	GetUserProfile(context.Context, *GetProfileRequest) (*UserProfileResponse, error)
 	GetUserHistory(context.Context, *GetHistoryRequest) (*HistoryResponse, error)
+	// S3 Presigned URL 발급 ---
+	GetUploadURL(context.Context, *UploadURLRequest) (*UploadURLResponse, error)
+	// 분석 결과 조회 (video_id 기반) ---
+	GetAnalysisResult(context.Context, *AnalysisResultRequest) (*AnalysisResultResponse, error)
 	mustEmbedUnimplementedAnalysisServiceServer()
 }
 
@@ -183,6 +213,12 @@ func (UnimplementedAnalysisServiceServer) GetUserProfile(context.Context, *GetPr
 }
 func (UnimplementedAnalysisServiceServer) GetUserHistory(context.Context, *GetHistoryRequest) (*HistoryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUserHistory not implemented")
+}
+func (UnimplementedAnalysisServiceServer) GetUploadURL(context.Context, *UploadURLRequest) (*UploadURLResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUploadURL not implemented")
+}
+func (UnimplementedAnalysisServiceServer) GetAnalysisResult(context.Context, *AnalysisResultRequest) (*AnalysisResultResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAnalysisResult not implemented")
 }
 func (UnimplementedAnalysisServiceServer) mustEmbedUnimplementedAnalysisServiceServer() {}
 func (UnimplementedAnalysisServiceServer) testEmbeddedByValue()                         {}
@@ -324,6 +360,42 @@ func _AnalysisService_GetUserHistory_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AnalysisService_GetUploadURL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UploadURLRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AnalysisServiceServer).GetUploadURL(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AnalysisService_GetUploadURL_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AnalysisServiceServer).GetUploadURL(ctx, req.(*UploadURLRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AnalysisService_GetAnalysisResult_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AnalysisResultRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AnalysisServiceServer).GetAnalysisResult(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AnalysisService_GetAnalysisResult_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AnalysisServiceServer).GetAnalysisResult(ctx, req.(*AnalysisResultRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AnalysisService_ServiceDesc is the grpc.ServiceDesc for AnalysisService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -354,6 +426,14 @@ var AnalysisService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUserHistory",
 			Handler:    _AnalysisService_GetUserHistory_Handler,
+		},
+		{
+			MethodName: "GetUploadURL",
+			Handler:    _AnalysisService_GetUploadURL_Handler,
+		},
+		{
+			MethodName: "GetAnalysisResult",
+			Handler:    _AnalysisService_GetAnalysisResult_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
