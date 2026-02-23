@@ -23,6 +23,9 @@
               "Parameters": {
                 "ApiEndpoint": "http://audio-analyzer.default.svc.cluster.local:8000/analyze",
                 "Method": "POST",
+                "Authentication": {
+                  "ConnectionArn": "${connection_arn}"
+                },
                 "RequestBody": {
                   "s3_bucket.$": "$.bucket",
                   "s3_key.$": "$.key"
@@ -69,6 +72,9 @@
               "Parameters": {
                 "ApiEndpoint": "http://video-analyzer.default.svc.cluster.local:8001/analyze",
                 "Method": "POST",
+                "Authentication": {
+                  "ConnectionArn": "${connection_arn}"
+                },
                 "RequestBody": {
                   "s3_bucket.$": "$.bucket",
                   "s3_key.$": "$.key",

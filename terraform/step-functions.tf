@@ -51,6 +51,15 @@ resource "aws_iam_role_policy" "step_functions_policy" {
           "logs:PutLogEvents"
         ]
         Resource = "arn:aws:logs:*:*:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "events:RetrieveConnectionCredentials",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = [aws_cloudwatch_event_connection.sfn_http_conn.arn]
       }
     ]
   })
@@ -61,7 +70,9 @@ resource "aws_sfn_state_machine" "analysis_workflow" {
   name     = "silver-guardian-analysis-workflow"
   role_arn = aws_iam_role.step_functions_role.arn
 
-  definition = file("${path.module}/step-functions/analysis-workflow.json")
+  definition = templatefile("${path.module}/step-functions/analysis-workflow.json", {
+    connection_arn = aws_cloudwatch_event_connection.sfn_http_conn.arn
+  })
 
   logging_configuration {
     log_destination        = "${aws_cloudwatch_log_group.step_functions_logs.arn}:*"
@@ -147,4 +158,15 @@ output "step_functions_arn" {
 output "step_functions_name" {
   description = "Step Functions State Machine Name"
   value       = aws_sfn_state_machine.analysis_workflow.name
+}
+
+resource "aws_cloudwatch_event_connection" "sfn_http_conn" {
+  name               = "silver-guardian-http-connection"
+  authorization_type = "API_KEY"
+  auth_parameters {
+    api_key {
+      key   = "x-unused-key"
+      value = "dummy-value"
+    }
+  }
 }
